@@ -1,0 +1,561 @@
+Site Spidering with ZAP + ffuf
+Objectives
+By the end of this lab, students will be able to:
+
+Configure and use OWASP ZAP for automated website spidering
+Implement ffuf for directory and file fuzzing operations
+Combine multiple reconnaissance tools for comprehensive web application enumeration
+Automate spidering and fuzzing tasks using Python scripts
+Analyze and interpret results from web reconnaissance activities
+Prerequisites
+Before starting this lab, students should have:
+
+Basic understanding of HTTP protocol and web applications
+Familiarity with Linux command line operations
+Basic Python programming knowledge
+Lab Environment
+Al Nafi Cloud Machine Setup: This lab runs entirely on Al Nafi's provided Linux-based cloud machines. Simply click Start Lab to access your pre-configured environment with Ubuntu 20.04 LTS, minimum 4GB RAM, and network connectivity.
+
+Task 1: Environment Setup and Tool Installation
+Step 1.1: Install System Dependencies
+Update your system and install required packages:
+
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y curl wget git python3 python3-pip openjdk-11-jdk unzip
+Step 1.2: Install OWASP ZAP
+Download and install OWASP ZAP:
+
+cd /opt
+sudo wget https://github.com/zaproxy/zaproxy/releases/download/v2.14.0/ZAP_2_14_0_unix.sh
+sudo chmod +x ZAP_2_14_0_unix.sh
+sudo ./ZAP_2_14_0_unix.sh -q
+sudo ln -s /opt/ZAP_2.14.0/zap.sh /usr/local/bin/zap
+Step 1.3: Install ffuf
+Install ffuf for directory and file discovery:
+
+wget https://github.com/ffuf/ffuf/releases/download/v2.1.0/ffuf_2.1.0_linux_amd64.tar.gz
+tar -xzf ffuf_2.1.0_linux_amd64.tar.gz
+sudo mv ffuf /usr/local/bin/
+sudo chmod +x /usr/local/bin/ffuf
+Step 1.4: Download Wordlists
+Create a wordlists directory and download common wordlists:
+
+mkdir -p ~/wordlists
+cd ~/wordlists
+git clone https://github.com/danielmiessler/SecLists.git
+wget https://raw.githubusercontent.com/v0re/dirb/master/wordlists/common.txt
+Step 1.5: Set Up Target Environment
+Install DVWA (Damn Vulnerable Web Application) as the target:
+
+sudo apt install -y apache2 mysql-server php php-mysql php-gd libapache2-mod-php
+sudo systemctl start apache2
+sudo systemctl start mysql
+
+cd /var/www/html
+sudo git clone https://github.com/digininja/DVWA.git
+sudo chown -R www-data:www-data DVWA/
+sudo chmod -R 755 DVWA/
+
+# Configure database
+sudo mysql -e "CREATE DATABASE dvwa;"
+sudo mysql -e "CREATE USER 'dvwa'@'localhost' IDENTIFIED BY 'password';"
+sudo mysql -e "GRANT ALL PRIVILEGES ON dvwa.* TO 'dvwa'@'localhost';"
+sudo mysql -e "FLUSH PRIVILEGES;"
+
+# Configure DVWA
+cd /var/www/html/DVWA/config
+sudo cp config.inc.php.dist config.inc.php
+sudo sed -i "s/p@ssw0rd/password/g" config.inc.php
+Access DVWA at http://localhost/DVWA and complete the setup through the web interface.
+
+Task 2: Website Spidering with OWASP ZAP
+Step 2.1: Start ZAP in Daemon Mode
+Launch ZAP in headless mode:
+
+zap -daemon -host 0.0.0.0 -port 8080 -config api.addrs.addr.name=.* -config api.addrs.addr.regex=true &
+Wait 30 seconds for ZAP to start, then verify:
+
+curl http://localhost:8080/JSON/core/view/version/
+Step 2.2: Create ZAP Spider Script
+Create a Python script to automate ZAP spidering. Complete the TODO sections:
+
+#!/usr/bin/env python3
+# File: zap_spider.py
+
+import requests
+import json
+import time
+import sys
+
+class ZAPSpider:
+    def __init__(self, zap_url="http://localhost:8080"):
+        self.zap_url = zap_url
+    
+    def start_spider(self, target_url):
+        """
+        Start spidering the target URL using ZAP API.
+        
+        Args:
+            target_url: The URL to spider
+        
+        Returns:
+            scan_id: The spider scan ID or None if failed
+        """
+        # TODO: Construct the ZAP API URL for starting a spider scan
+        # Endpoint: /JSON/spider/action/scan/
+        # TODO: Send GET request with target URL as parameter
+        # TODO: Extract and return the scan ID from response
+        pass
+    
+    def get_spider_status(self, scan_id):
+        """
+        Check the progress of the spider scan.
+        
+        Args:
+            scan_id: The spider scan ID
+        
+        Returns:
+            int: Progress percentage (0-100)
+        """
+        # TODO: Construct the ZAP API URL for checking spider status
+        # Endpoint: /JSON/spider/view/status/
+        # TODO: Send GET request with scan_id parameter
+        # TODO: Extract and return the status percentage
+        pass
+    
+    def wait_for_completion(self, scan_id):
+        """
+        Wait for spider scan to complete.
+        
+        Args:
+            scan_id: The spider scan ID
+        """
+        # TODO: Loop until spider status reaches 100%
+        # TODO: Print progress updates every 5 seconds
+        # TODO: Break when complete
+        pass
+    
+    def get_results(self):
+        """
+        Retrieve all URLs discovered by the spider.
+        
+        Returns:
+            list: List of discovered URLs
+        """
+        # TODO: Construct the ZAP API URL for getting spider results
+        # Endpoint: /JSON/spider/view/results/
+        # TODO: Send GET request and parse JSON response
+        # TODO: Return the list of URLs
+        pass
+    
+    def save_results(self, results, filename='spider_results.txt'):
+        """
+        Save spider results to a file.
+        
+        Args:
+            results: List of URLs
+            filename: Output filename
+        """
+        # TODO: Write each URL to the file, one per line
+        pass
+
+def main():
+    if len(sys.argv) != 2:
+        print("Usage: python3 zap_spider.py <target_url>")
+        sys.exit(1)
+    
+    target = sys.argv[1]
+    spider = ZAPSpider()
+    
+    # TODO: Start the spider scan
+    # TODO: Wait for completion
+    # TODO: Get and save results
+    # TODO: Print summary statistics
+
+if __name__ == "__main__":
+    main()
+Step 2.3: Execute ZAP Spider
+Make the script executable and run it:
+
+chmod +x zap_spider.py
+python3 zap_spider.py http://localhost/DVWA/
+Step 2.4: Analyze Spider Results
+Examine the discovered URLs:
+
+# View all discovered URLs
+cat spider_results.txt
+
+# Count total URLs
+wc -l spider_results.txt
+
+# Extract unique file extensions
+grep -o '\.[a-zA-Z0-9]*$' spider_results.txt | sort | uniq -c | sort -nr
+
+# Find admin or config related URLs
+grep -i 'admin\|config\|setup' spider_results.txt
+Task 3: Directory and File Discovery with ffuf
+Step 3.1: Basic Directory Fuzzing
+Perform basic directory discovery:
+
+ffuf -w ~/wordlists/common.txt \
+     -u http://localhost/DVWA/FUZZ \
+     -o ffuf_directories.json \
+     -of json \
+     -t 50 \
+     -mc 200,301,302,403 \
+     -c
+Parameters explained:
+
+-w: Wordlist to use
+-u: Target URL with FUZZ keyword
+-o: Output file
+-of: Output format
+-t: Number of threads
+-mc: Match HTTP status codes
+-c: Colorized output
+Step 3.2: File Extension Fuzzing
+Create a script for file discovery with multiple extensions:
+
+#!/bin/bash
+# File: file_discovery.sh
+
+TARGET="http://localhost/DVWA"
+WORDLIST="$HOME/wordlists/common.txt"
+EXTENSIONS="php,txt,html,js,css,xml,json,bak,old,conf"
+
+echo "Starting file extension fuzzing..."
+
+ffuf -w $WORDLIST \
+     -u $TARGET/FUZZ \
+     -e $EXTENSIONS \
+     -o ffuf_files.json \
+     -of json \
+     -t 50 \
+     -mc 200,301,302,403 \
+     -c
+
+echo "Results saved to ffuf_files.json"
+Execute the script:
+
+chmod +x file_discovery.sh
+./file_discovery.sh
+Step 3.3: Advanced Fuzzing Script
+Create a comprehensive fuzzing script. Complete the TODO sections:
+
+#!/usr/bin/env python3
+# File: advanced_fuzzing.py
+
+import subprocess
+import json
+import os
+import sys
+
+class AdvancedFuzzer:
+    def __init__(self, target_url, wordlist_dir="~/wordlists"):
+        self.target_url = target_url.rstrip('/')
+        self.wordlist_dir = os.path.expanduser(wordlist_dir)
+        self.results = {}
+    
+    def run_ffuf(self, wordlist, url_pattern, output_file, extensions=None):
+        """
+        Execute ffuf with specified parameters.
+        
+        Args:
+            wordlist: Path to wordlist file
+            url_pattern: URL with FUZZ keyword
+            output_file: Output JSON file
+            extensions: Optional comma-separated extensions
+        
+        Returns:
+            bool: True if successful
+        """
+        # TODO: Build ffuf command with parameters
+        # TODO: Include extensions if provided
+        # TODO: Execute subprocess with timeout
+        # TODO: Return success status
+        pass
+    
+    def directory_fuzzing(self):
+        """Perform directory fuzzing."""
+        # TODO: Set wordlist path
+        # TODO: Construct URL pattern with FUZZ
+        # TODO: Call run_ffuf with appropriate parameters
+        # TODO: Parse and store results
+        pass
+    
+    def file_fuzzing(self):
+        """Perform file fuzzing with common extensions."""
+        # TODO: Set wordlist path
+        # TODO: Define extensions list
+        # TODO: Call run_ffuf with extensions
+        # TODO: Parse and store results
+        pass
+    
+    def backup_file_fuzzing(self):
+        """Look for backup files."""
+        # TODO: Create custom wordlist with backup patterns
+        # Patterns: .bak, .old, .backup, backup.zip, etc.
+        # TODO: Run ffuf with backup wordlist
+        # TODO: Parse and store results
+        pass
+    
+    def parse_results(self, json_file):
+        """
+        Parse ffuf JSON results.
+        
+        Args:
+            json_file: Path to ffuf JSON output
+        
+        Returns:
+            list: Parsed results
+        """
+        # TODO: Open and parse JSON file
+        # TODO: Extract results array
+        # TODO: Return results list
+        pass
+    
+    def generate_report(self):
+        """Generate a comprehensive report."""
+        # TODO: Create report header with statistics
+        # TODO: Iterate through each result category
+        # TODO: Format and display findings
+        # TODO: Save report to file
+        pass
+
+def main():
+    if len(sys.argv) != 2:
+        print("Usage: python3 advanced_fuzzing.py <target_url>")
+        sys.exit(1)
+    
+    # TODO: Initialize fuzzer with target URL
+    # TODO: Run directory fuzzing
+    # TODO: Run file fuzzing
+    # TODO: Run backup file fuzzing
+    # TODO: Generate comprehensive report
+
+if __name__ == "__main__":
+    main()
+Execute the advanced fuzzing:
+
+chmod +x advanced_fuzzing.py
+python3 advanced_fuzzing.py http://localhost/DVWA
+Task 4: Automated Reconnaissance Integration
+Step 4.1: Create Integrated Automation Script
+Develop a comprehensive script combining ZAP and ffuf. Complete the TODO sections:
+
+#!/usr/bin/env python3
+# File: web_recon_automation.py
+
+import requests
+import subprocess
+import json
+import time
+import os
+import sys
+from datetime import datetime
+
+class WebReconAutomation:
+    def __init__(self, target_url, zap_url="http://localhost:8080"):
+        self.target_url = target_url.rstrip('/')
+        self.zap_url = zap_url
+        self.wordlist_dir = os.path.expanduser("~/wordlists")
+        self.results = {
+            'spider': [],
+            'directories': [],
+            'files': [],
+            'vulnerabilities': []
+        }
+        self.start_time = datetime.now()
+    
+    def check_zap_status(self):
+        """
+        Verify ZAP is running and accessible.
+        
+        Returns:
+            bool: True if ZAP is accessible
+        """
+        # TODO: Send request to ZAP version endpoint
+        # TODO: Check response status
+        # TODO: Return True if accessible, False otherwise
+        pass
+    
+    def spider_target(self):
+        """
+        Spider the target using ZAP.
+        
+        Returns:
+            bool: True if successful
+        """
+        # TODO: Start ZAP spider scan
+        # TODO: Monitor progress with status checks
+        # TODO: Retrieve and store results
+        # TODO: Return success status
+        pass
+    
+    def run_passive_scan(self):
+        """Run passive vulnerability scan."""
+        # TODO: Enable all passive scan rules via ZAP API
+        # TODO: Wait for passive scan to process
+        # TODO: Retrieve alerts/vulnerabilities
+        # TODO: Store results
+        pass
+    
+    def directory_fuzzing(self):
+        """
+        Perform directory fuzzing with ffuf.
+        
+        Returns:
+            bool: True if successful
+        """
+        # TODO: Construct ffuf command for directories
+        # TODO: Execute subprocess
+        # TODO: Parse JSON results
+        # TODO: Store in results dictionary
+        pass
+    
+    def file_fuzzing(self):
+        """
+        Perform file fuzzing with common extensions.
+        
+        Returns:
+            bool: True if successful
+        """
+        # TODO: Construct ffuf command with extensions
+        # TODO: Execute subprocess
+        # TODO: Parse JSON results
+        # TODO: Store in results dictionary
+        pass
+    
+    def analyze_results(self):
+        """
+        Analyze and categorize all results.
+        
+        Returns:
+            dict: Categorized findings
+        """
+        analysis = {
+            'admin_paths': [],
+            'config_files': [],
+            'backup_files': [],
+            'high_risk_vulns': []
+        }
+        
+        # TODO: Iterate through spider results
+        # TODO: Categorize URLs by keywords (admin, config, backup)
+        # TODO: Analyze fuzzing results
+        # TODO: Filter high-risk vulnerabilities
+        # TODO: Return analysis dictionary
+        pass
+    
+    def generate_report(self):
+        """Generate comprehensive HTML and text reports."""
+        # TODO: Call analyze_results()
+        # TODO: Calculate statistics
+        # TODO: Create HTML report with sections:
+        #       - Summary statistics
+        #       - Key findings
+        #       - Vulnerabilities
+        #       - All discovered URLs
+        # TODO: Create text summary report
+        # TODO: Save both reports to files
+        pass
+    
+    def run_full_reconnaissance(self):
+        """
+        Execute complete reconnaissance workflow.
+        
+        Returns:
+            bool: True if successful
+        """
+        # TODO: Check ZAP status
+        # TODO: Execute spider_target()
+        # TODO: Execute run_passive_scan()
+        # TODO: Execute directory_fuzzing()
+        # TODO: Execute file_fuzzing()
+        # TODO: Generate comprehensive report
+        # TODO: Print summary and duration
+        pass
+
+def main():
+    if len(sys.argv) != 2:
+        print("Usage: python3 web_recon_automation.py <target_url>")
+        sys.exit(1)
+    
+    # TODO: Validate URL format
+    # TODO: Initialize WebReconAutomation
+    # TODO: Run full reconnaissance
+    # TODO: Print completion message
+
+if __name__ == "__main__":
+    main()
+Step 4.2: Execute Automated Reconnaissance
+Run the complete automation:
+
+chmod +x web_recon_automation.py
+python3 web_recon_automation.py http://localhost/DVWA
+Step 4.3: Review Generated Reports
+Examine the output reports:
+
+# View text summary
+cat recon_summary.txt
+
+# Open HTML report in browser
+firefox recon_report.html &
+
+# Analyze specific findings
+grep -i "admin" recon_summary.txt
+grep -i "high risk" recon_summary.txt
+Expected Outcomes
+Upon completing this lab, students should have:
+
+Successfully installed and configured ZAP and ffuf
+Discovered URLs, directories, and files on the target application
+Identified potential security issues through automated scanning
+Created functional Python scripts for reconnaissance automation
+Generated comprehensive reports of findings
+Understanding of how to combine multiple tools for thorough web application enumeration
+Key Metrics:
+
+50+ URLs discovered via spidering
+10+ directories found via fuzzing
+20+ files identified with various extensions
+Complete HTML and text reports generated
+Troubleshooting Tips
+ZAP won't start:
+
+Ensure Java 11+ is installed: java -version
+Check if port 8080 is available: netstat -tuln | grep 8080
+Kill existing ZAP processes: pkill -f zap
+ffuf returns no results:
+
+Verify target is accessible: curl -I http://localhost/DVWA
+Check wordlist exists: ls -lh ~/wordlists/common.txt
+Reduce thread count with -t 10 if getting errors
+Python scripts fail:
+
+Install required modules: pip3 install requests
+Check Python version: python3 --version (should be 3.6+)
+Verify file permissions: chmod +x script.py
+DVWA not accessible:
+
+Restart Apache: sudo systemctl restart apache2
+Check MySQL: sudo systemctl status mysql
+Verify database setup: sudo mysql -e "SHOW DATABASES;"
+Conclusion
+This lab provided hands-on experience with two essential web reconnaissance tools: OWASP ZAP for automated spidering and vulnerability detection, and ffuf for efficient directory and file fuzzing. Students learned to automate these processes using Python, combining multiple tools for comprehensive web application enumeration.
+
+Key Takeaways:
+
+Automated spidering discovers linked content efficiently
+Fuzzing reveals hidden directories and files not linked in the application
+Combining multiple tools provides more complete reconnaissance
+Automation scripts enable repeatable, consistent testing
+Proper analysis and reporting are crucial for actionable results
+Next Steps:
+
+Explore ZAP's active scanning capabilities
+Learn advanced ffuf techniques (parameter fuzzing, virtual host discovery)
+Practice on other vulnerable applications (WebGoat, Juice Shop)
+Integrate findings into vulnerability assessment workflows
+Study responsible disclosure practices for real-world testing
+Remember: Always obtain proper authorization before testing any web application. Unauthorized testing is illegal and unethical.
