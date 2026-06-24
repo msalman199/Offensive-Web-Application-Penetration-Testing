@@ -1,0 +1,485 @@
+Analyze Cookie Structure and Session Token
+Objectives
+By the end of this lab, students will be able to:
+
+Analyze HTTP cookie structure and security attributes using Burp Suite
+Evaluate session token entropy and randomness patterns
+Identify common session management vulnerabilities
+Automate session security analysis using Python scripts
+Assess session token predictability and brute-force resistance
+Prerequisites
+Basic understanding of HTTP protocol and cookies
+Familiarity with Linux command line
+Basic Python programming knowledge
+Understanding of web application security fundamentals
+Lab Environment
+Your cloud machine includes:
+
+Burp Suite Community Edition
+Python 3.x with standard libraries
+Firefox browser with proxy configuration
+DVWA (Damn Vulnerable Web Application)
+Text editors (nano, vim)
+Access your environment by clicking Start Lab - no additional setup required.
+
+Task 1: Capture and Analyze Cookies with Burp Suite
+Step 1: Start Services and Configure Proxy
+Start DVWA services:
+
+sudo systemctl start apache2 mysql
+firefox http://localhost/dvwa &
+Login to DVWA (admin/password), then start Burp Suite:
+
+burpsuite &
+Configure Firefox proxy:
+
+Preferences > Network Settings > Manual proxy
+HTTP Proxy: 127.0.0.1, Port: 8080
+Check "Use this proxy for all protocols"
+Step 2: Intercept and Examine Session Cookies
+In Burp Suite:
+
+Navigate to Proxy > Intercept tab
+Ensure "Intercept is on"
+In Firefox, navigate to any DVWA page
+In Burp Suite, examine the intercepted request
+Look for:
+
+Cookie: header in requests
+Set-Cookie: header in responses
+Cookie attributes: HttpOnly, Secure, SameSite, Path, Domain
+Forward the request and disable intercept. Go to Proxy > HTTP history to review all cookie exchanges.
+
+Step 3: Create Cookie Analysis Script
+Create cookie_analyzer.py:
+
+#!/usr/bin/env python3
+import re
+import base64
+import binascii
+from urllib.parse import unquote
+
+def analyze_cookie_structure(cookie_value):
+    """
+    Analyze the structure and encoding of a cookie value.
+    
+    Args:
+        cookie_value: The cookie string to analyze
+    
+    Returns:
+        Dictionary with analysis results
+    """
+    results = {
+        'original': cookie_value,
+        'length': len(cookie_value),
+        'encodings': []
+    }
+    
+    # TODO: Implement base64 decoding attempt
+    # Hint: Use base64.b64decode() with proper padding
+    
+    # TODO: Implement URL decoding check
+    # Hint: Use urllib.parse.unquote()
+    
+    # TODO: Implement hexadecimal detection and decoding
+    # Hint: Check if string matches [0-9a-fA-F]+ pattern
+    
+    # TODO: Analyze character composition
+    # Count digits, letters, and special characters
+    
+    # TODO: Return results dictionary
+    pass
+
+def check_cookie_security(cookie_attributes):
+    """
+    Check security attributes of a cookie.
+    
+    Args:
+        cookie_attributes: Dictionary of cookie attributes
+    
+    Returns:
+        List of security issues found
+    """
+    issues = []
+    
+    # TODO: Check for missing HttpOnly flag
+    # TODO: Check for missing Secure flag
+    # TODO: Check for missing SameSite attribute
+    # TODO: Validate Domain and Path settings
+    
+    return issues
+
+if __name__ == "__main__":
+    # Replace with actual session token from Burp Suite
+    sample_cookie = "YOUR_SESSION_TOKEN_HERE"
+    results = analyze_cookie_structure(sample_cookie)
+    print(results)
+Run the script:
+
+python3 cookie_analyzer.py
+Expected Output: Analysis showing cookie length, encoding type, and character distribution.
+
+Task 2: Evaluate Session Token Entropy
+Step 1: Collect Multiple Session Tokens
+Create session_collector.py:
+
+#!/usr/bin/env python3
+import requests
+import time
+
+class SessionTokenCollector:
+    def __init__(self, target_url):
+        self.target_url = target_url
+        self.tokens = []
+    
+    def collect_tokens(self, num_tokens=30):
+        """
+        Collect multiple session tokens from the target application.
+        
+        Args:
+            num_tokens: Number of tokens to collect
+        
+        Returns:
+            List of collected session tokens
+        """
+        print(f"Collecting {num_tokens} session tokens...")
+        
+        for i in range(num_tokens):
+            # TODO: Create new session object
+            # TODO: Make GET request to target_url
+            # TODO: Extract session cookie from response
+            # TODO: Append token to self.tokens list
+            # TODO: Add small delay to avoid overwhelming server
+            pass
+        
+        return self.tokens
+    
+    def save_tokens(self, filename="tokens.txt"):
+        """Save collected tokens to file."""
+        # TODO: Write tokens to file, one per line
+        pass
+
+if __name__ == "__main__":
+    collector = SessionTokenCollector("http://localhost/dvwa/login.php")
+    tokens = collector.collect_tokens(30)
+    collector.save_tokens()
+Run the collector:
+
+python3 session_collector.py
+Step 2: Analyze Token Entropy
+Create entropy_analyzer.py:
+
+#!/usr/bin/env python3
+import math
+from collections import Counter
+
+class EntropyAnalyzer:
+    def __init__(self, tokens_file="tokens.txt"):
+        self.tokens = self.load_tokens(tokens_file)
+    
+    def load_tokens(self, filename):
+        """Load tokens from file."""
+        # TODO: Read tokens from file
+        # TODO: Return list of tokens
+        pass
+    
+    def calculate_shannon_entropy(self, data):
+        """
+        Calculate Shannon entropy of the data.
+        
+        Args:
+            data: String data to analyze
+        
+        Returns:
+            Float representing entropy value
+        
+        Formula: H(X) = -Σ P(xi) * log2(P(xi))
+        """
+        if not data:
+            return 0
+        
+        # TODO: Count frequency of each character
+        # TODO: Calculate probability for each character
+        # TODO: Apply Shannon entropy formula
+        # TODO: Return entropy value
+        pass
+    
+    def analyze_token_patterns(self):
+        """
+        Analyze patterns in collected tokens.
+        
+        Returns:
+            Dictionary with analysis results
+        """
+        results = {}
+        
+        # TODO: Calculate token length statistics (min, max, avg)
+        # TODO: Identify unique characters used
+        # TODO: Calculate Shannon entropy
+        # TODO: Detect sequential patterns
+        # TODO: Check for timestamp patterns
+        # TODO: Identify common prefixes/suffixes
+        
+        return results
+    
+    def assess_vulnerability(self, entropy_ratio):
+        """
+        Assess vulnerability based on entropy analysis.
+        
+        Args:
+            entropy_ratio: Ratio of actual to maximum entropy
+        
+        Returns:
+            Risk level (HIGH, MEDIUM, LOW)
+        """
+        # TODO: Implement risk assessment logic
+        # entropy_ratio < 0.5 = HIGH risk
+        # entropy_ratio < 0.7 = MEDIUM risk
+        # entropy_ratio >= 0.7 = LOW risk
+        pass
+
+if __name__ == "__main__":
+    analyzer = EntropyAnalyzer()
+    results = analyzer.analyze_token_patterns()
+    print(results)
+Run the analyzer:
+
+python3 entropy_analyzer.py
+Expected Output: Entropy values, character distribution, and risk assessment.
+
+Task 3: Automate Session Security Testing
+Step 1: Create Comprehensive Security Scanner
+Create session_scanner.py:
+
+#!/usr/bin/env python3
+import requests
+import json
+from datetime import datetime
+
+class SessionSecurityScanner:
+    def __init__(self, target_url):
+        self.target_url = target_url
+        self.vulnerabilities = []
+    
+    def scan(self):
+        """Execute complete security scan."""
+        print("=== SESSION SECURITY SCANNER ===")
+        
+        self.test_cookie_attributes()
+        self.test_token_randomness()
+        self.test_session_fixation()
+        self.test_session_timeout()
+        self.generate_report()
+    
+    def test_cookie_attributes(self):
+        """
+        Test for missing security attributes in cookies.
+        
+        Checks:
+        - HttpOnly flag
+        - Secure flag
+        - SameSite attribute
+        """
+        # TODO: Make request to target
+        # TODO: Extract cookies from response
+        # TODO: Check each security attribute
+        # TODO: Add vulnerabilities to self.vulnerabilities list
+        pass
+    
+    def test_token_randomness(self):
+        """
+        Test session token randomness.
+        
+        Collects multiple tokens and checks for:
+        - Duplicate tokens
+        - Sequential patterns
+        - Predictable patterns
+        """
+        # TODO: Collect 20-30 session tokens
+        # TODO: Check for duplicates
+        # TODO: Analyze for sequential patterns
+        # TODO: Check character distribution
+        pass
+    
+    def test_session_fixation(self):
+        """
+        Test for session fixation vulnerability.
+        
+        Attempts to:
+        - Set a custom session token
+        - Verify if application accepts it
+        """
+        # TODO: Create session with custom token
+        # TODO: Make request with custom token
+        # TODO: Check if token was accepted
+        # TODO: Report vulnerability if found
+        pass
+    
+    def test_session_timeout(self):
+        """
+        Test session timeout configuration.
+        
+        Checks for:
+        - Max-Age attribute
+        - Expires attribute
+        - Reasonable timeout values
+        """
+        # TODO: Extract timeout information from cookies
+        # TODO: Validate timeout values
+        # TODO: Report missing or excessive timeouts
+        pass
+    
+    def generate_report(self):
+        """
+        Generate JSON report of findings.
+        
+        Report includes:
+        - Scan metadata
+        - List of vulnerabilities
+        - Risk summary
+        """
+        report = {
+            'scan_time': datetime.now().isoformat(),
+            'target': self.target_url,
+            'vulnerabilities': self.vulnerabilities,
+            'summary': {
+                'critical': 0,
+                'high': 0,
+                'medium': 0,
+                'low': 0
+            }
+        }
+        
+        # TODO: Count vulnerabilities by severity
+        # TODO: Save report to JSON file
+        # TODO: Print summary to console
+        pass
+
+if __name__ == "__main__":
+    scanner = SessionSecurityScanner("http://localhost/dvwa/")
+    scanner.scan()
+Run the scanner:
+
+python3 session_scanner.py
+Step 2: Analyze Brute Force Resistance
+Create bruteforce_analyzer.py:
+
+#!/usr/bin/env python3
+import string
+
+class BruteForceAnalyzer:
+    def __init__(self, sample_token):
+        self.token = sample_token
+        self.charset = string.ascii_letters + string.digits
+    
+    def calculate_complexity(self):
+        """
+        Calculate brute force complexity.
+        
+        Returns:
+            Dictionary with complexity metrics
+        """
+        # TODO: Determine token length
+        # TODO: Identify character set used
+        # TODO: Calculate search space (charset_size ^ length)
+        # TODO: Estimate time to crack at various speeds
+        # TODO: Assign risk level based on complexity
+        pass
+    
+    def detect_patterns(self, token_list):
+        """
+        Detect predictable patterns in token list.
+        
+        Args:
+            token_list: List of session tokens
+        
+        Returns:
+            List of detected patterns
+        """
+        patterns = []
+        
+        # TODO: Check for incremental patterns
+        # TODO: Check for timestamp-based patterns
+        # TODO: Check for hash-based patterns (MD5, SHA1, SHA256 lengths)
+        # TODO: Test if tokens are hashes of simple inputs
+        
+        return patterns
+    
+    def test_hash_prediction(self, token):
+        """
+        Test if token could be a hash of predictable input.
+        
+        Args:
+            token: Session token to test
+        
+        Returns:
+            Tuple of (is_predictable, input_value)
+        """
+        import hashlib
+        
+        # Common predictable inputs to test
+        test_inputs = [
+            'admin', 'user', 'session', '1', '123',
+            # TODO: Add timestamp-based inputs
+            # TODO: Add sequential numbers
+        ]
+        
+        # TODO: Test MD5, SHA1, SHA256 hashes
+        # TODO: Return True if match found
+        pass
+
+if __name__ == "__main__":
+    sample = "YOUR_TOKEN_HERE"
+    analyzer = BruteForceAnalyzer(sample)
+    complexity = analyzer.calculate_complexity()
+    print(complexity)
+Run the analyzer:
+
+python3 bruteforce_analyzer.py
+Expected Outcomes
+After completing this lab, you should have:
+
+Cookie Analysis Results: Understanding of cookie structure, encoding, and security attributes
+Entropy Measurements: Quantitative assessment of session token randomness
+Vulnerability Report: JSON report identifying session management weaknesses
+Risk Assessment: Classification of security risks (CRITICAL, HIGH, MEDIUM, LOW)
+Key Findings to Document:
+
+Missing security flags (HttpOnly, Secure, SameSite)
+Low entropy values (< 0.5 indicates high risk)
+Predictable token patterns
+Session fixation vulnerabilities
+Inadequate session timeouts
+Troubleshooting Tips
+Issue: Burp Suite not intercepting traffic
+
+Solution: Verify Firefox proxy settings point to 127.0.0.1:8080
+Check that Burp Suite proxy listener is active on port 8080
+Issue: Python script cannot connect to DVWA
+
+Solution: Ensure Apache and MySQL services are running
+Verify DVWA is accessible at http://localhost/dvwa/
+Check for firewall blocking local connections
+Issue: No session tokens collected
+
+Solution: Verify you're logged into DVWA before collecting tokens
+Check that the target URL is correct
+Ensure cookies are enabled in browser
+Issue: Import errors in Python scripts
+
+Solution: Install required libraries: pip3 install requests --user
+Verify Python 3.x is being used: python3 --version
+Conclusion
+This lab demonstrated practical techniques for analyzing session management security. You learned to:
+
+Capture and decode session cookies using Burp Suite
+Measure token entropy to assess randomness
+Identify common vulnerabilities like missing security flags and predictable patterns
+Automate security testing with Python scripts
+Key Takeaways:
+
+Strong session tokens require high entropy (> 128 bits recommended)
+Security attributes (HttpOnly, Secure, SameSite) are critical for cookie protection
+Predictable patterns in tokens enable session hijacking attacks
+Automated scanning helps identify vulnerabilities at scale
+Next Steps: Apply these techniques to test real-world applications, always with proper authorization. Consider exploring advanced topics like session token regeneration, concurrent session handling, and CSRF protection mechanisms.
