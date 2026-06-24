@@ -1,0 +1,571 @@
+Brute Force Hidden Admin Areas with ffuf
+Objectives
+By the end of this lab, students will be able to:
+
+Use ffuf to discover hidden directories and admin interfaces
+Create Python scripts to automate directory enumeration
+Analyze HTTP response codes to identify security vulnerabilities
+Generate custom wordlists for targeted fuzzing
+Interpret fuzzing results to prioritize security testing targets
+Prerequisites
+Basic understanding of HTTP protocol and status codes
+Familiarity with Linux command line
+Basic Python programming knowledge
+Understanding of web application structure
+Lab Environment Setup
+Al Nafi Cloud Machine: Click Start Lab to access your pre-configured Linux environment with all necessary tools installed including:
+
+ffuf (Fast web fuzzer)
+Python 3 with requests library
+nginx web server
+Pre-configured wordlists
+Task 1: Set Up Test Environment and Basic ffuf Usage
+Step 1: Configure Test Web Application
+Create a local web application with hidden admin areas for testing:
+
+# Start nginx web server
+sudo systemctl start nginx
+
+# Create test directory structure
+sudo mkdir -p /var/www/html/{admin,administrator,management,wp-admin}
+
+# Create sample admin page
+sudo tee /var/www/html/admin/index.html > /dev/null << 'EOF'
+<!DOCTYPE html>
+<html>
+<head><title>Admin Login</title></head>
+<body>
+<h1>Administrator Login</h1>
+<form>
+<input type="text" placeholder="Username">
+<input type="password" placeholder="Password">
+<button type="submit">Login</button>
+</form>
+</body>
+</html>
+EOF
+
+# Set permissions
+sudo chown -R www-data:www-data /var/www/html/
+sudo chmod -R 755 /var/www/html/
+
+# Verify server is running
+curl -I http://localhost
+Step 2: Install ffuf and Prepare Wordlists
+# Install ffuf
+wget https://github.com/ffuf/ffuf/releases/download/v2.1.0/ffuf_2.1.0_linux_amd64.tar.gz
+tar -xzf ffuf_2.1.0_linux_amd64.tar.gz
+sudo mv ffuf /usr/local/bin/
+ffuf -V
+
+# Create wordlist directory
+mkdir -p ~/wordlists
+
+# Create custom admin wordlist
+cat > ~/wordlists/admin-paths.txt << 'EOF'
+admin
+administrator
+wp-admin
+admin.php
+login
+management
+manager
+control-panel
+dashboard
+panel
+backend
+adminpanel
+admin-panel
+administration
+controlpanel
+EOF
+Step 3: Perform Basic Directory Fuzzing
+# Basic directory enumeration
+ffuf -w ~/wordlists/admin-paths.txt -u http://localhost/FUZZ -mc 200,301,302,403
+
+# Parameters:
+# -w: wordlist file
+# -u: target URL (FUZZ is replaced with wordlist entries)
+# -mc: match HTTP status codes to display
+
+# Enhanced fuzzing with filtering
+ffuf -w ~/wordlists/admin-paths.txt \
+     -u http://localhost/FUZZ \
+     -mc 200,301,302,403,401 \
+     -fc 404 \
+     -t 50 \
+     -v
+
+# Additional parameters:
+# -fc: filter out status codes
+# -t: number of concurrent threads
+# -v: verbose output
+Step 4: Advanced ffuf Techniques
+# Filter by response size to eliminate false positives
+ffuf -w ~/wordlists/admin-paths.txt \
+     -u http://localhost/FUZZ \
+     -mc 200,301,302,403 \
+     -fs 162
+
+# Fuzz with multiple wordlists (paths and extensions)
+cat > ~/wordlists/extensions.txt << 'EOF'
+.php
+.html
+.asp
+.jsp
+EOF
+
+ffuf -w ~/wordlists/admin-paths.txt:PATHS \
+     -w ~/wordlists/extensions.txt:EXT \
+     -u http://localhost/FUZZPATHSFUZZEXT \
+     -mc 200,301,302,403
+
+# Save results to file
+ffuf -w ~/wordlists/admin-paths.txt \
+     -u http://localhost/FUZZ \
+     -mc 200,301,302,403 \
+     -o results.json \
+     -of json
+Task 2: Automate Directory Fuzzing with Python
+Step 1: Create Basic Directory Fuzzer
+Create a Python script template for directory enumeration:
+
+#!/usr/bin/env python3
+"""
+Basic Directory Fuzzer
+Students: Complete the TODO sections to implement fuzzing functionality
+"""
+
+import requests
+import sys
+import threading
+from urllib.parse import urljoin
+
+class DirectoryFuzzer:
+    def __init__(self, target_url, wordlist_file, threads=10):
+        """
+        Initialize the fuzzer
+        
+        Args:
+            target_url: Target website URL
+            wordlist_file: Path to wordlist file
+            threads: Number of concurrent threads
+        """
+        self.target_url = target_url.rstrip('/')
+        self.wordlist_file = wordlist_file
+        self.threads = threads
+        self.found_paths = []
+        self.session = requests.Session()
+        
+    def load_wordlist(self):
+        """
+        Load wordlist from file
+        
+        Returns:
+            List of paths to test
+        """
+        # TODO: Open and read the wordlist file
+        # TODO: Return list of stripped lines (remove whitespace)
+        # TODO: Handle FileNotFoundError exception
+        pass
+    
+    def test_path(self, path):
+        """
+        Test a single path and analyze response
+        
+        Args:
+            path: Directory/file path to test
+        """
+        url = f"{self.target_url}/{path}"
+        
+        try:
+            # TODO: Send GET request to the URL with timeout
+            # TODO: Check if status_code is in [200, 301, 302, 403, 401]
+            # TODO: If interesting, store result with url, status_code, content_length
+            # TODO: Print formatted result
+            pass
+            
+        except requests.exceptions.RequestException as e:
+            # TODO: Handle connection errors silently
+            pass
+    
+    def worker(self, paths):
+        """
+        Worker thread function to test multiple paths
+        
+        Args:
+            paths: List of paths for this thread to test
+        """
+        # TODO: Loop through paths and call test_path() for each
+        pass
+    
+    def run(self):
+        """
+        Main fuzzing function with threading
+        
+        Returns:
+            List of found paths with details
+        """
+        print(f"Starting fuzzing on {self.target_url}")
+        print("-" * 50)
+        
+        # TODO: Load wordlist
+        # TODO: Split wordlist into chunks for each thread
+        # TODO: Create and start threads
+        # TODO: Wait for all threads to complete
+        # TODO: Print summary of results
+        
+        return self.found_paths
+
+if __name__ == "__main__":
+    # TODO: Parse command line arguments (target_url, wordlist_file)
+    # TODO: Create DirectoryFuzzer instance
+    # TODO: Run fuzzer and display results
+    pass
+Save this template and implement the TODO sections.
+
+Step 2: Create Advanced Fuzzer with Response Analysis
+#!/usr/bin/env python3
+"""
+Advanced Directory Fuzzer with Content Analysis
+Students: Implement the analysis functions
+"""
+
+import requests
+import json
+import re
+from collections import defaultdict
+
+class AdvancedFuzzer:
+    def __init__(self, target_url, wordlist_file, threads=10):
+        self.target_url = target_url.rstrip('/')
+        self.wordlist_file = wordlist_file
+        self.threads = threads
+        self.found_paths = []
+        self.session = requests.Session()
+        self.session.headers.update({
+            'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36'
+        })
+    
+    def analyze_response(self, response, path):
+        """
+        Analyze response content for security indicators
+        
+        Args:
+            response: requests.Response object
+            path: Tested path
+            
+        Returns:
+            Dictionary with analysis results
+        """
+        content = response.text.lower()
+        
+        # TODO: Search for login forms using regex
+        # Pattern: <input[^>]*type=["']password["']
+        
+        # TODO: Search for admin keywords
+        # Keywords: admin, administrator, management, dashboard, control
+        
+        # TODO: Count forms and links in the page
+        
+        # TODO: Extract page title
+        
+        # TODO: Return dictionary with all findings
+        pass
+    
+    def test_path(self, path):
+        """
+        Test path with detailed analysis
+        
+        Args:
+            path: Path to test
+        """
+        url = f"{self.target_url}/{path}"
+        
+        try:
+            # TODO: Send GET request
+            # TODO: Call analyze_response() if status code is interesting
+            # TODO: Store result with analysis data
+            # TODO: Print color-coded output based on status code
+            # TODO: Print alerts for login forms or admin keywords
+            pass
+            
+        except requests.exceptions.RequestException:
+            pass
+    
+    def generate_report(self):
+        """
+        Generate detailed analysis report
+        """
+        print("\n" + "="*60)
+        print("DETAILED ANALYSIS REPORT")
+        print("="*60)
+        
+        # TODO: Group results by status code
+        # TODO: Print summary for each status code
+        # TODO: Highlight high-priority findings (login forms, admin keywords)
+        # TODO: List top 10 targets by priority score
+        pass
+    
+    def save_results(self, filename='results.json'):
+        """
+        Save results to JSON file
+        
+        Args:
+            filename: Output filename
+        """
+        # TODO: Write self.found_paths to JSON file
+        # TODO: Print confirmation message
+        pass
+
+# TODO: Implement main execution logic
+Step 3: Create Wordlist Generator
+#!/usr/bin/env python3
+"""
+Custom Wordlist Generator for Admin Path Fuzzing
+Students: Complete the generation logic
+"""
+
+import itertools
+
+class WordlistGenerator:
+    def __init__(self):
+        self.admin_terms = [
+            'admin', 'administrator', 'management', 'control',
+            'panel', 'dashboard', 'backend', 'console'
+        ]
+        
+        self.common_paths = [
+            'login', 'signin', 'auth', 'access', 'config', 'settings'
+        ]
+        
+        self.separators = ['', '-', '_']
+        self.extensions = ['', '.php', '.html', '.asp', '.jsp']
+    
+    def generate_combinations(self):
+        """
+        Generate all combinations of admin terms and paths
+        
+        Returns:
+            Sorted list of unique wordlist entries
+        """
+        wordlist = set()
+        
+        # TODO: Add all single terms to wordlist
+        
+        # TODO: Generate combinations of admin_terms and common_paths
+        # Use itertools.product() to create all combinations
+        # Combine with each separator
+        
+        # TODO: Add extensions to all generated words
+        
+        # TODO: Return sorted list
+        pass
+    
+    def save_wordlist(self, filename):
+        """
+        Save generated wordlist to file
+        
+        Args:
+            filename: Output filename
+        """
+        # TODO: Generate wordlist
+        # TODO: Write each word to file (one per line)
+        # TODO: Print statistics
+        pass
+
+# TODO: Implement command-line interface
+Task 3: Analyze Results and Identify Vulnerabilities
+Step 1: Create Response Analyzer
+#!/usr/bin/env python3
+"""
+HTTP Response Analyzer for Security Assessment
+Students: Implement analysis functions
+"""
+
+import json
+import sys
+
+class ResponseAnalyzer:
+    def __init__(self, results_file):
+        self.results_file = results_file
+        self.results = self.load_results()
+        
+        self.status_info = {
+            200: {
+                'risk': 'HIGH',
+                'description': 'Publicly accessible admin area',
+                'action': 'Immediate investigation required'
+            },
+            403: {
+                'risk': 'MEDIUM',
+                'description': 'Directory exists but access denied',
+                'action': 'Try authentication bypass techniques'
+            },
+            401: {
+                'risk': 'MEDIUM',
+                'description': 'Authentication required',
+                'action': 'Attempt credential attacks'
+            },
+            301: {
+                'risk': 'MEDIUM',
+                'description': 'Permanent redirect',
+                'action': 'Follow redirect to find actual location'
+            },
+            302: {
+                'risk': 'MEDIUM',
+                'description': 'Temporary redirect',
+                'action': 'May redirect to login page'
+            }
+        }
+    
+    def load_results(self):
+        """
+        Load fuzzing results from JSON file
+        
+        Returns:
+            List of result dictionaries
+        """
+        # TODO: Open and parse JSON file
+        # TODO: Handle FileNotFoundError
+        pass
+    
+    def analyze_status_codes(self):
+        """
+        Analyze HTTP status codes and security implications
+        """
+        print("STATUS CODE ANALYSIS")
+        print("=" * 50)
+        
+        # TODO: Count occurrences of each status code
+        # TODO: For each status code, print:
+        #   - Count
+        #   - Risk level
+        #   - Description
+        #   - Recommended action
+        #   - Example URLs (up to 3)
+        pass
+    
+    def calculate_target_score(self, result):
+        """
+        Calculate priority score for a target
+        
+        Args:
+            result: Result dictionary
+            
+        Returns:
+            Tuple of (score, reasons_list)
+        """
+        score = 0
+        reasons = []
+        
+        # TODO: Add points based on status code
+        # 200: +10 points
+        # 403/401: +7 points
+        # 301/302: +5 points
+        
+        # TODO: Add points for content analysis
+        # Login form: +8 points
+        # Admin keywords: +6 points
+        # Forms present: +3 points
+        
+        # TODO: Add points for path indicators
+        # Contains 'admin', 'management', etc: +4 points
+        
+        # TODO: Return (score, reasons)
+        pass
+    
+    def identify_high_value_targets(self):
+        """
+        Identify and rank high-value targets
+        """
+        print("\nHIGH-VALUE TARGETS")
+        print("=" * 50)
+        
+        # TODO: Calculate score for each result
+        # TODO: Filter results with score >= 8
+        # TODO: Sort by score (descending)
+        # TODO: Print top 10 targets with details
+        pass
+    
+    def generate_attack_recommendations(self):
+        """
+        Generate specific attack recommendations
+        """
+        print("\nATTACK RECOMMENDATIONS")
+        print("=" * 50)
+        
+        # TODO: For each result, determine attack type:
+        # Status 200 + login form: Credential brute force
+        # Status 200 (no form): Content discovery
+        # Status 403/401: Authentication bypass
+        # Status 301/302: Redirect analysis
+        
+        # TODO: Print recommendations with:
+        #   - Target URL
+        #   - Attack type
+        #   - Description
+        #   - Suggested tools
+        #   - Priority level
+        pass
+
+# TODO: Implement main execution
+Step 2: Run Complete Analysis Workflow
+Execute the complete fuzzing and analysis workflow:
+
+# Generate custom wordlist
+python3 wordlist_generator.py ~/wordlists/custom_admin.txt
+
+# Run advanced fuzzer
+python3 advanced_fuzzer.py http://localhost ~/wordlists/custom_admin.txt 10
+
+# Analyze results
+python3 response_analyzer.py results.json
+Step 3: Interpret Security Findings
+Review your analysis output and document:
+
+Critical Findings: Status 200 admin pages with login forms
+Medium Risk: 403/401 protected areas that exist but are blocked
+Low Risk: Redirects that may lead to admin areas
+False Positives: Common response sizes that appear frequently
+Create a summary report with:
+
+Total paths discovered
+High-priority targets (score >= 8)
+Recommended next steps for each finding
+Tools needed for further testing
+Expected Outcomes
+After completing this lab, you should have:
+
+Successfully discovered hidden admin directories using ffuf
+Created functional Python scripts for automated fuzzing
+Generated custom wordlists tailored to admin path discovery
+Analyzed HTTP responses to identify security vulnerabilities
+Prioritized targets based on risk assessment
+Generated actionable security testing recommendations
+Troubleshooting Tips
+ffuf not finding any paths:
+
+Verify web server is running: sudo systemctl status nginx
+Check wordlist file exists and is readable
+Test manually: curl http://localhost/admin
+Python script connection errors:
+
+Ensure target URL includes http:// or https://
+Check firewall settings: sudo ufw status
+Verify network connectivity: ping localhost
+High false positive rate:
+
+Use response size filtering: -fs flag in ffuf
+Filter common 404 page sizes
+Analyze response content, not just status codes
+Conclusion
+This lab demonstrated practical techniques for discovering hidden administrative interfaces in web applications. You learned to use ffuf for efficient directory enumeration, automate the process with Python scripts, and analyze results to identify genuine security vulnerabilities. These skills are essential for web application security testing and penetration testing. Remember to always obtain proper authorization before testing any systems you don't own.
+
+Key takeaways:
+
+Directory fuzzing reveals hidden admin areas
+HTTP status codes indicate different security risks
+Automation improves efficiency and consistency
+Content analysis reduces false positives
+Proper analysis prioritizes testing efforts
