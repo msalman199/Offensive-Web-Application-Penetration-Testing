@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE users [
+    <!ENTITY % file SYSTEM "file:///home/student/sensitive/config.txt">
+    <!ENTITY % eval "<!ENTITY &#x25; data SYSTEM 'file:///tmp/passwd.fake'>">
+    %eval;
+]>
+<users>
+    <user>
+        <name>Parameter Test</name>
+        <email>param@example.com</email>
+    </user>
+</users>
