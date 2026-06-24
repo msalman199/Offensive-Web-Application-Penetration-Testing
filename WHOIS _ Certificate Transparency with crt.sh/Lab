@@ -1,0 +1,425 @@
+WHOIS and Certificate Transparency Reconnaissance
+Objectives
+By the end of this lab, students will be able to:
+
+Perform WHOIS lookups to gather domain registration information
+Query Certificate Transparency logs using crt.sh for subdomain discovery
+Automate reconnaissance tasks using Python scripts
+Analyze domain ownership patterns and certificate histories
+Combine multiple OSINT techniques for comprehensive domain intelligence
+Prerequisites
+Basic Linux command line proficiency
+Understanding of DNS and domain name systems
+Familiarity with SSL/TLS certificate concepts
+Python 3 programming fundamentals
+Basic knowledge of HTTP/HTTPS protocols
+Lab Environment
+Your cloud machine includes:
+
+Python 3.x with pip
+whois command-line tool
+curl and wget utilities
+Text editors (nano, vim)
+Pre-installed Python libraries
+Access your environment by clicking Start Lab.
+
+Task 1: Understanding WHOIS and Certificate Transparency
+Subtask 1.1: WHOIS Protocol Basics
+WHOIS provides domain registration information including:
+
+Registrar and registration dates
+Name servers
+Contact information
+Domain status
+Verify WHOIS installation:
+
+which whois
+# If not installed: sudo apt update && sudo apt install whois -y
+Subtask 1.2: Certificate Transparency Overview
+Certificate Transparency (CT) logs provide:
+
+Public records of all issued SSL certificates
+Historical certificate data
+Subdomain discovery capabilities
+Detection of unauthorized certificates
+crt.sh is a web interface to CT logs allowing searches by domain, organization, or certificate fingerprint.
+
+Task 2: Manual WHOIS Reconnaissance
+Subtask 2.1: Basic WHOIS Queries
+Create working directory:
+
+mkdir ~/whois_ct_lab
+cd ~/whois_ct_lab
+Perform basic lookups:
+
+# Domain lookup
+whois google.com
+
+# IP address lookup
+whois 8.8.8.8
+
+# Save output
+whois google.com > google_whois.txt
+Subtask 2.2: WHOIS Analysis Script
+Create whois_analyzer.sh:
+
+#!/bin/bash
+
+# TODO: Accept domain as command line argument
+# TODO: Perform WHOIS lookup and save to file
+# TODO: Extract and display key information:
+#   - Registrar
+#   - Creation date
+#   - Expiration date
+#   - Name servers
+# TODO: Format output in readable format
+
+echo "WHOIS Analyzer - Student Implementation Required"
+Make executable and test:
+
+chmod +x whois_analyzer.sh
+./whois_analyzer.sh example.com
+Subtask 2.3: Bulk Domain Analysis
+Create bulk_whois.sh:
+
+#!/bin/bash
+
+# TODO: Read domains from file or array
+# TODO: Loop through each domain
+# TODO: Perform WHOIS lookup for each
+# TODO: Extract registrar and expiration date
+# TODO: Save summary to results file
+# TODO: Display completion status
+
+domains=("google.com" "github.com" "stackoverflow.com")
+# Complete the implementation
+Task 3: Certificate Transparency with crt.sh
+Subtask 3.1: Manual CT Log Queries
+Query crt.sh using curl:
+
+# Search certificates for domain
+curl -s "https://crt.sh/?q=example.com&output=json" | python3 -m json.tool | head -50
+
+# Search with wildcard for subdomains
+curl -s "https://crt.sh/?q=%.example.com&output=json" | python3 -m json.tool | head -50
+Subtask 3.2: Certificate Search Script
+Create crt_search.sh:
+
+#!/bin/bash
+
+# TODO: Accept domain as parameter
+# TODO: Query crt.sh API with JSON output
+# TODO: Parse JSON response using Python or jq
+# TODO: Display certificate information:
+#   - Certificate ID
+#   - Issuer name
+#   - Valid dates
+#   - Common name
+# TODO: Limit output to first 10 results
+
+echo "Certificate Search - Student Implementation Required"
+Subtask 3.3: Subdomain Discovery
+Create subdomain_discovery.sh:
+
+#!/bin/bash
+
+# TODO: Query crt.sh for wildcard domain (%.domain.com)
+# TODO: Extract all unique subdomains from certificates
+# TODO: Filter out wildcard entries (starting with *)
+# TODO: Remove duplicates
+# TODO: Save to file and display count
+# TODO: Sort alphabetically
+
+echo "Subdomain Discovery - Student Implementation Required"
+Task 4: Python Automation
+Subtask 4.1: Python WHOIS Tool
+Install required libraries:
+
+pip3 install python-whois requests
+Create whois_automation.py:
+
+#!/usr/bin/env python3
+
+import whois
+import json
+import argparse
+
+class WHOISAnalyzer:
+    def __init__(self):
+        self.results = {}
+    
+    def lookup_domain(self, domain):
+        """
+        Perform WHOIS lookup for a domain.
+        
+        Args:
+            domain: Domain name to lookup
+            
+        Returns:
+            Dictionary with WHOIS data
+        """
+        # TODO: Perform WHOIS lookup using whois.whois()
+        # TODO: Extract relevant fields (registrar, dates, name_servers, etc.)
+        # TODO: Handle exceptions appropriately
+        # TODO: Store results in self.results dictionary
+        # TODO: Return the result dictionary
+        pass
+    
+    def bulk_lookup(self, domains):
+        """
+        Perform WHOIS lookup for multiple domains.
+        
+        Args:
+            domains: List of domain names
+            
+        Returns:
+            List of result dictionaries
+        """
+        # TODO: Iterate through domain list
+        # TODO: Call lookup_domain for each
+        # TODO: Collect and return all results
+        pass
+    
+    def save_results(self, filename):
+        """Save results to JSON file."""
+        # TODO: Write self.results to JSON file
+        # TODO: Use proper formatting (indent=2)
+        pass
+    
+    def print_summary(self):
+        """Print summary of WHOIS results."""
+        # TODO: Display total domains analyzed
+        # TODO: For each domain, show key information
+        # TODO: Format output clearly
+        pass
+
+def main():
+    # TODO: Set up argument parser for -d (domain) and -f (file) options
+    # TODO: Create WHOISAnalyzer instance
+    # TODO: Process single domain or file of domains
+    # TODO: Print summary and save results
+    pass
+
+if __name__ == "__main__":
+    main()
+Subtask 4.2: Certificate Transparency Automation
+Create crt_automation.py:
+
+#!/usr/bin/env python3
+
+import requests
+import json
+import argparse
+import re
+
+class CertificateTransparencyAnalyzer:
+    def __init__(self):
+        self.base_url = "https://crt.sh/"
+        self.results = {}
+        self.session = requests.Session()
+    
+    def search_certificates(self, domain, include_subdomains=True):
+        """
+        Search CT logs for certificates.
+        
+        Args:
+            domain: Domain to search
+            include_subdomains: Include wildcard search
+            
+        Returns:
+            List of certificate dictionaries
+        """
+        # TODO: Build query URL with proper parameters
+        # TODO: Make GET request to crt.sh API
+        # TODO: Parse JSON response
+        # TODO: Handle errors and empty responses
+        # TODO: Store and return results
+        pass
+    
+    def extract_subdomains(self, domain):
+        """
+        Extract unique subdomains from certificate data.
+        
+        Args:
+            domain: Base domain
+            
+        Returns:
+            Sorted list of unique subdomains
+        """
+        # TODO: Get certificates for domain
+        # TODO: Extract common_name and name_value fields
+        # TODO: Parse and filter subdomain names
+        # TODO: Remove wildcards and duplicates
+        # TODO: Validate domain format
+        # TODO: Return sorted list
+        pass
+    
+    def analyze_certificates(self, domain):
+        """
+        Analyze certificate patterns and statistics.
+        
+        Args:
+            domain: Domain to analyze
+            
+        Returns:
+            Dictionary with analysis results
+        """
+        # TODO: Count total certificates
+        # TODO: Group by issuer
+        # TODO: Identify active vs expired certificates
+        # TODO: Find date ranges
+        # TODO: Return analysis dictionary
+        pass
+    
+    def save_results(self, filename):
+        """Save certificate data to JSON file."""
+        # TODO: Write results to file with proper formatting
+        pass
+
+def main():
+    # TODO: Set up argument parser
+    # TODO: Add options for -d (domain), -s (subdomains), -a (analyze)
+    # TODO: Create analyzer instance
+    # TODO: Execute requested operations
+    # TODO: Display and save results
+    pass
+
+if __name__ == "__main__":
+    main()
+Subtask 4.3: Combined Reconnaissance Tool
+Create combined_recon.py:
+
+#!/usr/bin/env python3
+
+import whois
+import requests
+import json
+import argparse
+from datetime import datetime
+
+class CombinedReconTool:
+    def __init__(self):
+        self.whois_data = {}
+        self.cert_data = {}
+        self.subdomains = {}
+    
+    def whois_lookup(self, domain):
+        """Perform WHOIS lookup."""
+        # TODO: Implement WHOIS lookup
+        # TODO: Store results in self.whois_data
+        pass
+    
+    def cert_transparency_lookup(self, domain):
+        """Search certificate transparency logs."""
+        # TODO: Query crt.sh API
+        # TODO: Extract certificates and subdomains
+        # TODO: Store in self.cert_data and self.subdomains
+        pass
+    
+    def analyze_domain(self, domain):
+        """Perform comprehensive domain analysis."""
+        # TODO: Execute both WHOIS and CT lookups
+        # TODO: Add delays between requests
+        # TODO: Return success status
+        pass
+    
+    def print_comprehensive_report(self, domain):
+        """Print detailed analysis report."""
+        # TODO: Display WHOIS information section
+        # TODO: Display certificate transparency section
+        # TODO: Display discovered subdomains section
+        # TODO: Format output clearly with headers
+        pass
+    
+    def save_all_results(self, domain, output_file):
+        """Save all results to JSON file."""
+        # TODO: Combine all data into single dictionary
+        # TODO: Add timestamp
+        # TODO: Write to JSON file
+        pass
+
+def main():
+    # TODO: Set up argument parser
+    # TODO: Add options for domain, output file, and mode selection
+    # TODO: Execute analysis
+    # TODO: Generate and save report
+    pass
+
+if __name__ == "__main__":
+    main()
+Task 5: Analysis and Reporting
+Subtask 5.1: Testing Your Tools
+Test each script with different domains:
+
+# Test WHOIS automation
+python3 whois_automation.py -d example.com
+
+# Test CT automation
+python3 crt_automation.py -d example.com -s -a
+
+# Test combined tool
+python3 combined_recon.py -d example.com -o results.json
+Subtask 5.2: Comparative Analysis
+Create a test file with multiple domains:
+
+echo -e "google.com\ngithub.com\nstackoverflow.com" > test_domains.txt
+Analyze patterns:
+
+Compare registrars across domains
+Identify common certificate issuers
+Analyze subdomain naming conventions
+Check certificate expiration patterns
+Subtask 5.3: Security Insights
+Use your tools to identify:
+
+Expired or soon-to-expire certificates
+Unusual subdomain patterns
+Certificate issuer diversity
+Domain age and registration patterns
+Potential shadow IT (unexpected subdomains)
+Expected Outcomes
+After completing this lab, you should have:
+
+Functional Scripts: Working WHOIS and CT lookup tools
+Subdomain Lists: Discovered subdomains for target domains
+Analysis Reports: JSON files with comprehensive reconnaissance data
+Security Insights: Understanding of domain security posture
+Automation Skills: Ability to scale reconnaissance activities
+Troubleshooting Tips
+WHOIS Lookup Failures:
+
+Some domains use privacy protection services
+Rate limiting may occur with bulk queries
+Try different WHOIS servers with -h flag
+crt.sh API Issues:
+
+API may be slow or timeout with large result sets
+Add retry logic with exponential backoff
+Implement request delays (1-2 seconds between queries)
+Python Library Errors:
+
+Ensure all dependencies are installed: pip3 install python-whois requests
+Use virtual environment to avoid conflicts
+Check Python version compatibility (3.6+)
+JSON Parsing Errors:
+
+crt.sh may return empty responses for some domains
+Validate JSON before parsing
+Handle exceptions for malformed responses
+Conclusion
+This lab introduced WHOIS and Certificate Transparency as powerful reconnaissance techniques. You learned to:
+
+Query domain registration information using WHOIS
+Search CT logs for certificate and subdomain discovery
+Automate reconnaissance with Python scripts
+Combine multiple data sources for comprehensive analysis
+These skills form the foundation of passive reconnaissance in security assessments. Practice responsible disclosure and always obtain proper authorization before conducting reconnaissance on production systems.
+
+Key Takeaways:
+
+WHOIS provides ownership and registration data
+CT logs reveal certificate history and subdomains
+Automation scales manual reconnaissance efforts
+Combined techniques provide comprehensive intelligence
+Always respect rate limits and terms of service
+Continue practicing with different domains to refine your reconnaissance methodology.
