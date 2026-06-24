@@ -1,0 +1,762 @@
+Map Application Endpoints with Wappalyzer
+Objectives
+By the end of this lab, students will be able to:
+
+Understand the importance of endpoint mapping in web application security testing
+Use Wappalyzer to identify technologies and frameworks used by web applications
+Utilize dirsearch to discover hidden directories and endpoints
+Create Python scripts to automate endpoint discovery processes
+Analyze and interpret results from multiple reconnaissance tools
+Document findings in a structured format for further security assessment
+Prerequisites
+Before starting this lab, students should have:
+
+Basic understanding of web applications and HTTP protocols
+Familiarity with Linux command line operations
+Basic knowledge of Python programming
+Understanding of web application security concepts
+Experience with terminal-based tools
+Lab Environment
+Al Nafi provides Linux-based cloud machines for this lab. Simply click Start Lab to access your pre-configured environment. No need to build your own virtual machine or install additional software.
+
+Your lab machine comes pre-installed with:
+
+Python 3.x
+pip package manager
+Git
+curl and wget utilities
+Text editors (nano, vim)
+Task 1: Install and Configure Required Tools
+Subtask 1.1: Install Wappalyzer CLI
+First, we need to install the Wappalyzer command-line interface tool.
+
+# Update package manager
+sudo apt update
+
+# Install Node.js and npm (required for Wappalyzer CLI)
+sudo apt install -y nodejs npm
+
+# Install Wappalyzer CLI globally
+sudo npm install -g wappalyzer-cli
+Verify the installation:
+
+wappalyzer --version
+Subtask 1.2: Install dirsearch
+Install dirsearch, a powerful directory and file brute-forcing tool.
+
+# Clone dirsearch repository
+git clone https://github.com/maurosoria/dirsearch.git
+
+# Navigate to dirsearch directory
+cd dirsearch
+
+# Make the script executable
+chmod +x dirsearch.py
+
+# Test the installation
+python3 dirsearch.py --help
+Subtask 1.3: Install Python Dependencies
+Install required Python libraries for our automation scripts.
+
+# Install requests library for HTTP operations
+pip3 install requests beautifulsoup4 json2html
+
+# Verify installation
+python3 -c "import requests, bs4, json2html; print('All libraries installed successfully')"
+Task 2: Technology Detection with Wappalyzer
+Subtask 2.1: Basic Wappalyzer Usage
+Let's start by analyzing a target website to identify the technologies it uses.
+
+# Create a working directory for our lab
+mkdir ~/endpoint_mapping_lab
+cd ~/endpoint_mapping_lab
+
+# Analyze a target website (using a safe, legal target)
+wappalyzer https://httpbin.org --pretty
+Subtask 2.2: Advanced Wappalyzer Analysis
+Perform more detailed analysis with additional options:
+
+# Analyze with extended output and save results
+wappalyzer https://httpbin.org --pretty --extended > wappalyzer_results.json
+
+# View the results
+cat wappalyzer_results.json
+Subtask 2.3: Batch Analysis Script
+Create a Python script to analyze multiple targets:
+
+# Create the batch analysis script
+nano batch_wappalyzer.py
+Add the following content:
+
+#!/usr/bin/env python3
+
+import subprocess
+import json
+import sys
+from datetime import datetime
+
+def run_wappalyzer(url):
+    """Run Wappalyzer analysis on a given URL"""
+    try:
+        cmd = ['wappalyzer', url, '--pretty']
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        
+        if result.returncode == 0:
+            return json.loads(result.stdout)
+        else:
+            print(f"Error analyzing {url}: {result.stderr}")
+            return None
+    except subprocess.TimeoutExpired:
+        print(f"Timeout analyzing {url}")
+        return None
+    except json.JSONDecodeError:
+        print(f"Invalid JSON response for {url}")
+        return None
+
+def analyze_targets(target_file):
+    """Analyze multiple targets from a file"""
+    results = {}
+    
+    try:
+        with open(target_file, 'r') as f:
+            targets = [line.strip() for line in f if line.strip()]
+    except FileNotFoundError:
+        print(f"Target file {target_file} not found")
+        return
+    
+    for target in targets:
+        print(f"Analyzing {target}...")
+        result = run_wappalyzer(target)
+        if result:
+            results[target] = result
+    
+    # Save results
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_file = f"wappalyzer_batch_{timestamp}.json"
+    
+    with open(output_file, 'w') as f:
+        json.dump(results, f, indent=2)
+    
+    print(f"Results saved to {output_file}")
+    return results
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        print("Usage: python3 batch_wappalyzer.py <target_file>")
+        sys.exit(1)
+    
+    analyze_targets(sys.argv[1])
+Create a target file for testing:
+
+# Create a list of safe targets for testing
+cat > targets.txt << EOF
+https://httpbin.org
+https://jsonplaceholder.typicode.com
+https://reqres.in
+EOF
+
+# Make the script executable and run it
+chmod +x batch_wappalyzer.py
+python3 batch_wappalyzer.py targets.txt
+Task 3: Directory and Endpoint Discovery with dirsearch
+Subtask 3.1: Basic dirsearch Usage
+Navigate back to the dirsearch directory and perform basic directory enumeration:
+
+# Go to dirsearch directory
+cd ~/dirsearch
+
+# Basic directory enumeration
+python3 dirsearch.py -u https://httpbin.org -e php,html,js,txt
+
+# Save results to file
+python3 dirsearch.py -u https://httpbin.org -e php,html,js,txt --format=json -o ~/endpoint_mapping_lab/dirsearch_basic.json
+Subtask 3.2: Advanced dirsearch Configuration
+Create a custom wordlist and perform advanced enumeration:
+
+# Create a custom wordlist for API endpoints
+cd ~/endpoint_mapping_lab
+cat > api_wordlist.txt << EOF
+api
+v1
+v2
+admin
+login
+logout
+users
+user
+auth
+token
+config
+settings
+status
+health
+docs
+swagger
+openapi
+graphql
+rest
+json
+xml
+upload
+download
+search
+filter
+export
+import
+backup
+test
+debug
+dev
+staging
+prod
+EOF
+
+# Run dirsearch with custom wordlist
+cd ~/dirsearch
+python3 dirsearch.py -u https://httpbin.org -w ~/endpoint_mapping_lab/api_wordlist.txt -e php,html,js,txt,json --format=json -o ~/endpoint_mapping_lab/dirsearch_custom.json
+Subtask 3.3: Recursive Directory Search
+Perform recursive directory enumeration:
+
+# Recursive search with depth limit
+python3 dirsearch.py -u https://httpbin.org -e php,html,js,txt -r --max-recursion-depth=2 --format=json -o ~/endpoint_mapping_lab/dirsearch_recursive.json
+Task 4: Automated Endpoint Mapping with Python
+Subtask 4.1: Create Comprehensive Mapping Script
+Create a Python script that combines both tools for comprehensive endpoint mapping:
+
+cd ~/endpoint_mapping_lab
+nano endpoint_mapper.py
+Add the following comprehensive script:
+
+#!/usr/bin/env python3
+
+import subprocess
+import json
+import requests
+import time
+import sys
+from datetime import datetime
+from urllib.parse import urljoin, urlparse
+import os
+
+class EndpointMapper:
+    def __init__(self, target_url):
+        self.target_url = target_url
+        self.results = {
+            'target': target_url,
+            'timestamp': datetime.now().isoformat(),
+            'technologies': {},
+            'endpoints': [],
+            'status_codes': {},
+            'interesting_files': []
+        }
+    
+    def run_wappalyzer(self):
+        """Run Wappalyzer to detect technologies"""
+        print(f"[+] Running Wappalyzer on {self.target_url}")
+        try:
+            cmd = ['wappalyzer', self.target_url, '--pretty']
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+            
+            if result.returncode == 0:
+                tech_data = json.loads(result.stdout)
+                self.results['technologies'] = tech_data
+                print(f"[+] Detected {len(tech_data.get('technologies', []))} technologies")
+            else:
+                print(f"[-] Wappalyzer error: {result.stderr}")
+        except Exception as e:
+            print(f"[-] Wappalyzer exception: {str(e)}")
+    
+    def run_dirsearch(self):
+        """Run dirsearch to find endpoints"""
+        print(f"[+] Running dirsearch on {self.target_url}")
+        try:
+            # Create temporary output file
+            temp_output = f"/tmp/dirsearch_{int(time.time())}.json"
+            
+            cmd = [
+                'python3', 
+                os.path.expanduser('~/dirsearch/dirsearch.py'),
+                '-u', self.target_url,
+                '-e', 'php,html,js,txt,json,xml',
+                '--format=json',
+                '-o', temp_output,
+                '--quiet'
+            ]
+            
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            
+            # Read results from file
+            if os.path.exists(temp_output):
+                with open(temp_output, 'r') as f:
+                    dirsearch_data = json.load(f)
+                    
+                # Process dirsearch results
+                for entry in dirsearch_data.get('results', []):
+                    endpoint_info = {
+                        'url': entry.get('url', ''),
+                        'status': entry.get('status', 0),
+                        'length': entry.get('length', 0),
+                        'content_type': entry.get('content-type', ''),
+                        'redirect': entry.get('redirect', '')
+                    }
+                    self.results['endpoints'].append(endpoint_info)
+                    
+                    # Track status codes
+                    status = str(entry.get('status', 0))
+                    if status in self.results['status_codes']:
+                        self.results['status_codes'][status] += 1
+                    else:
+                        self.results['status_codes'][status] = 1
+                
+                # Clean up
+                os.remove(temp_output)
+                print(f"[+] Found {len(self.results['endpoints'])} endpoints")
+            else:
+                print("[-] Dirsearch output file not found")
+                
+        except Exception as e:
+            print(f"[-] Dirsearch exception: {str(e)}")
+    
+    def analyze_endpoints(self):
+        """Analyze discovered endpoints for interesting patterns"""
+        print("[+] Analyzing endpoints for interesting patterns")
+        
+        interesting_patterns = [
+            'admin', 'login', 'api', 'config', 'backup',
+            'test', 'debug', 'swagger', 'docs', 'upload'
+        ]
+        
+        for endpoint in self.results['endpoints']:
+            url = endpoint['url'].lower()
+            for pattern in interesting_patterns:
+                if pattern in url and endpoint['status'] in [200, 301, 302]:
+                    self.results['interesting_files'].append({
+                        'url': endpoint['url'],
+                        'pattern': pattern,
+                        'status': endpoint['status'],
+                        'reason': f"Contains '{pattern}' pattern"
+                    })
+    
+    def test_common_endpoints(self):
+        """Test for common API endpoints"""
+        print("[+] Testing common API endpoints")
+        
+        common_endpoints = [
+            '/api', '/api/v1', '/api/v2',
+            '/swagger', '/swagger.json', '/swagger-ui',
+            '/docs', '/documentation',
+            '/health', '/status', '/ping',
+            '/admin', '/admin/login',
+            '/login', '/logout',
+            '/users', '/user',
+            '/config', '/configuration'
+        ]
+        
+        for endpoint in common_endpoints:
+            try:
+                full_url = urljoin(self.target_url, endpoint)
+                response = requests.get(full_url, timeout=10, allow_redirects=False)
+                
+                if response.status_code in [200, 301, 302, 401, 403]:
+                    endpoint_info = {
+                        'url': full_url,
+                        'status': response.status_code,
+                        'length': len(response.content),
+                        'content_type': response.headers.get('content-type', ''),
+                        'redirect': response.headers.get('location', '')
+                    }
+                    
+                    # Avoid duplicates
+                    if not any(ep['url'] == full_url for ep in self.results['endpoints']):
+                        self.results['endpoints'].append(endpoint_info)
+                        
+                        # Update status codes
+                        status = str(response.status_code)
+                        if status in self.results['status_codes']:
+                            self.results['status_codes'][status] += 1
+                        else:
+                            self.results['status_codes'][status] = 1
+                
+                time.sleep(0.5)  # Be respectful
+                
+            except requests.RequestException:
+                continue
+    
+    def generate_report(self):
+        """Generate a comprehensive report"""
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        report_file = f"endpoint_mapping_report_{timestamp}.json"
+        
+        with open(report_file, 'w') as f:
+            json.dump(self.results, f, indent=2)
+        
+        # Generate human-readable summary
+        summary_file = f"endpoint_mapping_summary_{timestamp}.txt"
+        with open(summary_file, 'w') as f:
+            f.write(f"Endpoint Mapping Report for {self.target_url}\n")
+            f.write("=" * 50 + "\n\n")
+            
+            f.write(f"Scan Date: {self.results['timestamp']}\n")
+            f.write(f"Target: {self.results['target']}\n\n")
+            
+            # Technologies
+            f.write("Detected Technologies:\n")
+            f.write("-" * 20 + "\n")
+            if self.results['technologies']:
+                for tech in self.results['technologies'].get('technologies', []):
+                    f.write(f"- {tech.get('name', 'Unknown')}")
+                    if tech.get('version'):
+                        f.write(f" (v{tech['version']})")
+                    f.write("\n")
+            else:
+                f.write("No technologies detected\n")
+            f.write("\n")
+            
+            # Status code summary
+            f.write("Status Code Summary:\n")
+            f.write("-" * 20 + "\n")
+            for status, count in sorted(self.results['status_codes'].items()):
+                f.write(f"{status}: {count} endpoints\n")
+            f.write("\n")
+            
+            # Interesting endpoints
+            f.write("Interesting Endpoints:\n")
+            f.write("-" * 20 + "\n")
+            for item in self.results['interesting_files']:
+                f.write(f"- {item['url']} (Status: {item['status']}) - {item['reason']}\n")
+            f.write("\n")
+            
+            # All endpoints
+            f.write("All Discovered Endpoints:\n")
+            f.write("-" * 25 + "\n")
+            for endpoint in sorted(self.results['endpoints'], key=lambda x: x['status']):
+                f.write(f"{endpoint['status']} - {endpoint['url']}\n")
+        
+        print(f"[+] Report saved to {report_file}")
+        print(f"[+] Summary saved to {summary_file}")
+        
+        return report_file, summary_file
+
+def main():
+    if len(sys.argv) != 2:
+        print("Usage: python3 endpoint_mapper.py <target_url>")
+        print("Example: python3 endpoint_mapper.py https://httpbin.org")
+        sys.exit(1)
+    
+    target_url = sys.argv[1]
+    
+    # Validate URL
+    parsed = urlparse(target_url)
+    if not parsed.scheme or not parsed.netloc:
+        print("[-] Invalid URL provided")
+        sys.exit(1)
+    
+    print(f"[+] Starting endpoint mapping for {target_url}")
+    print("=" * 50)
+    
+    mapper = EndpointMapper(target_url)
+    
+    # Run all analysis steps
+    mapper.run_wappalyzer()
+    mapper.run_dirsearch()
+    mapper.test_common_endpoints()
+    mapper.analyze_endpoints()
+    
+    # Generate reports
+    report_file, summary_file = mapper.generate_report()
+    
+    print("\n" + "=" * 50)
+    print("[+] Endpoint mapping completed!")
+    print(f"[+] Found {len(mapper.results['endpoints'])} total endpoints")
+    print(f"[+] Found {len(mapper.results['interesting_files'])} interesting endpoints")
+    print(f"[+] Detailed report: {report_file}")
+    print(f"[+] Summary report: {summary_file}")
+
+if __name__ == "__main__":
+    main()
+Subtask 4.2: Run the Comprehensive Mapping Script
+Make the script executable and run it:
+
+# Make the script executable
+chmod +x endpoint_mapper.py
+
+# Run the comprehensive endpoint mapping
+python3 endpoint_mapper.py https://httpbin.org
+Subtask 4.3: Create Batch Processing Script
+Create a script to process multiple targets:
+
+nano batch_endpoint_mapper.py
+Add the following content:
+
+#!/usr/bin/env python3
+
+import subprocess
+import sys
+import os
+from datetime import datetime
+
+def process_targets(target_file):
+    """Process multiple targets from a file"""
+    try:
+        with open(target_file, 'r') as f:
+            targets = [line.strip() for line in f if line.strip() and not line.startswith('#')]
+    except FileNotFoundError:
+        print(f"[-] Target file {target_file} not found")
+        return
+    
+    print(f"[+] Processing {len(targets)} targets")
+    
+    for i, target in enumerate(targets, 1):
+        print(f"\n[+] Processing target {i}/{len(targets)}: {target}")
+        print("-" * 60)
+        
+        try:
+            # Run the endpoint mapper for each target
+            cmd = ['python3', 'endpoint_mapper.py', target]
+            result = subprocess.run(cmd, timeout=600)  # 10 minute timeout per target
+            
+            if result.returncode == 0:
+                print(f"[+] Successfully processed {target}")
+            else:
+                print(f"[-] Error processing {target}")
+                
+        except subprocess.TimeoutExpired:
+            print(f"[-] Timeout processing {target}")
+        except Exception as e:
+            print(f"[-] Exception processing {target}: {str(e)}")
+    
+    print(f"\n[+] Batch processing completed!")
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        print("Usage: python3 batch_endpoint_mapper.py <target_file>")
+        sys.exit(1)
+    
+    process_targets(sys.argv[1])
+Run the batch processor:
+
+# Make executable and run
+chmod +x batch_endpoint_mapper.py
+python3 batch_endpoint_mapper.py targets.txt
+Task 5: Results Analysis and Documentation
+Subtask 5.1: Analyze Generated Reports
+Review the generated reports:
+
+# List all generated reports
+ls -la *report*.json *summary*.txt
+
+# View the latest summary report
+cat $(ls -t *summary*.txt | head -1)
+Subtask 5.2: Create Comparison Script
+Create a script to compare results across different targets:
+
+nano compare_results.py
+Add the following content:
+
+#!/usr/bin/env python3
+
+import json
+import glob
+import sys
+from collections import defaultdict
+
+def compare_reports():
+    """Compare multiple endpoint mapping reports"""
+    report_files = glob.glob("endpoint_mapping_report_*.json")
+    
+    if not report_files:
+        print("[-] No report files found")
+        return
+    
+    print(f"[+] Found {len(report_files)} report files")
+    
+    # Aggregate data
+    all_technologies = defaultdict(int)
+    all_status_codes = defaultdict(int)
+    common_endpoints = defaultdict(int)
+    
+    for report_file in report_files:
+        try:
+            with open(report_file, 'r') as f:
+                data = json.load(f)
+            
+            # Count technologies
+            for tech in data.get('technologies', {}).get('technologies', []):
+                tech_name = tech.get('name', 'Unknown')
+                all_technologies[tech_name] += 1
+            
+            # Count status codes
+            for status, count in data.get('status_codes', {}).items():
+                all_status_codes[status] += count
+            
+            # Count common endpoint patterns
+            for endpoint in data.get('endpoints', []):
+                url_path = endpoint.get('url', '').split('/')[-1].lower()
+                if url_path:
+                    common_endpoints[url_path] += 1
+                    
+        except Exception as e:
+            print(f"[-] Error processing {report_file}: {str(e)}")
+    
+    # Generate comparison report
+    print("\n" + "=" * 50)
+    print("ENDPOINT MAPPING COMPARISON REPORT")
+    print("=" * 50)
+    
+    print(f"\nTargets Analyzed: {len(report_files)}")
+    
+    print(f"\nMost Common Technologies:")
+    print("-" * 25)
+    for tech, count in sorted(all_technologies.items(), key=lambda x: x[1], reverse=True)[:10]:
+        print(f"{tech}: {count} targets")
+    
+    print(f"\nStatus Code Distribution:")
+    print("-" * 25)
+    for status, count in sorted(all_status_codes.items()):
+        print(f"{status}: {count} endpoints")
+    
+    print(f"\nMost Common Endpoint Names:")
+    print("-" * 30)
+    for endpoint, count in sorted(common_endpoints.items(), key=lambda x: x[1], reverse=True)[:15]:
+        if len(endpoint) > 2:  # Filter out very short names
+            print(f"{endpoint}: found on {count} targets")
+
+if __name__ == "__main__":
+    compare_reports()
+Run the comparison:
+
+chmod +x compare_results.py
+python3 compare_results.py
+Subtask 5.3: Generate Final Documentation
+Create a comprehensive documentation script:
+
+nano generate_documentation.py
+Add the following content:
+
+#!/usr/bin/env python3
+
+import json
+import glob
+import os
+from datetime import datetime
+
+def generate_lab_documentation():
+    """Generate comprehensive lab documentation"""
+    
+    doc_content = f"""
+# Endpoint Mapping Lab Results
+Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+## Lab Summary
+This lab demonstrated the use of Wappalyzer and dirsearch for comprehensive endpoint mapping and technology detection.
+
+## Tools Used
+- **Wappalyzer CLI**: Technology detection and fingerprinting
+- **dirsearch**: Directory and endpoint enumeration  
+- **Custom Python Scripts**: Automation and result analysis
+
+## Files Generated
+"""
+    
+    # List all generated files
+    report_files = glob.glob("*.json") + glob.glob("*.txt") + glob.glob("*.py")
+    
+    for file in sorted(report_files):
+        file_size = os.path.getsize(file)
+        doc_content += f"- `{file}` ({file_size} bytes)\n"
+    
+    doc_content += """
+## Key Findings
+
+### Technology Detection
+The Wappalyzer analysis revealed various technologies in use across the tested targets.
+
+### Endpoint Discovery  
+Directory enumeration uncovered both common and hidden endpoints that could be relevant for security testing.
+
+### Automation Benefits
+The custom Python scripts demonstrated how manual processes can be automated for efficiency and consistency.
+
+## Security Implications
+
+### Information Disclosure
+- Technology fingerprinting can reveal version information useful for vulnerability research
+- Directory enumeration may expose sensitive files or administrative interfaces
+- Endpoint mapping provides attack surface analysis
+
+### Recommendations
+1. Implement proper access controls on administrative endpoints
+2. Use security headers to limit information disclosure
+3. Regularly audit exposed endpoints and remove unnecessary ones
+4. Keep all technologies updated to latest secure versions
+
+## Next Steps
+- Perform deeper analysis on discovered endpoints
+- Test for common vulnerabilities in identified technologies
+- Implement security controls based on findings
+"""
+    
+    # Write documentation
+    with open("lab_documentation.md", "w") as f:
+        f.write(doc_content)
+    
+    print("[+] Lab documentation generated: lab_documentation.md")
+
+if __name__ == "__main__":
+    generate_lab_documentation()
+Run the documentation generator:
+
+chmod +x generate_documentation.py
+python3 generate_documentation.py
+
+# View the generated documentation
+cat lab_documentation.md
+Troubleshooting Common Issues
+Issue 1: Wappalyzer Installation Problems
+If you encounter issues installing Wappalyzer CLI:
+
+# Alternative installation method
+curl -sL https://deb.nodesource.com/setup_16.x | sudo -E bash -
+sudo apt-get install -y nodejs
+sudo npm install -g wappalyzer-cli --unsafe-perm=true
+Issue 2: dirsearch Permission Errors
+If dirsearch shows permission errors:
+
+# Fix permissions
+chmod +x ~/dirsearch/dirsearch.py
+sudo chown -R $USER:$USER ~/dirsearch/
+Issue 3: Python Script Timeout Issues
+If scripts timeout on slow connections:
+
+# Increase timeout values in scripts
+# Edit the timeout parameters in the Python scripts:
+# - Wappalyzer timeout: increase from 60 to 120 seconds
+# - dirsearch timeout: increase from 300 to 600 seconds
+# - requests timeout: increase from 10 to 30 seconds
+Issue 4: Network Connectivity Issues
+Test network connectivity:
+
+# Test basic connectivity
+ping -c 4 httpbin.org
+
+# Test HTTPS connectivity
+curl -I https://httpbin.org
+
+# Check DNS resolution
+nslookup httpbin.org
+Conclusion
+In this lab, you have successfully learned how to:
+
+Install and configure essential endpoint mapping tools including Wappalyzer CLI and dirsearch
+Detect web technologies using Wappalyzer to identify frameworks, servers, and other components
+Discover hidden endpoints using dirsearch with various wordlists and configurations
+Automate the mapping process by creating comprehensive Python scripts that combine multiple tools
+Analyze and document results in structured formats for further security assessment
+This endpoint mapping process is crucial for web application security testing as it provides:
+
+Attack Surface Analysis: Understanding all available endpoints helps identify potential entry points
+Technology Assessment: Knowing the underlying technologies helps focus testing efforts on relevant vulnerabilities
+Information Gathering: Comprehensive endpoint mapping provides the foundation for deeper security testing
+The automation scripts you created can be reused and modified for different targets, making your security testing more efficient and consistent. The combination of technology detection and endpoint discovery provides a solid foundation for comprehensive web application security assessments.
+
+Remember to always ensure you have proper authorization before testing any web applications, and use these techniques only on systems you own or have explicit permission to test.
