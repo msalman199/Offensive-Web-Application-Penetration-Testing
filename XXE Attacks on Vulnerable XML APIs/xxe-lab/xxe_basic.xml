@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE users [
+    <!ENTITY xxe SYSTEM "file:///tmp/passwd.fake">
+]>
+<users>
+    <user>
+        <name>&xxe;</name>
+        <email>test@example.com</email>
+    </user>
+</users>
