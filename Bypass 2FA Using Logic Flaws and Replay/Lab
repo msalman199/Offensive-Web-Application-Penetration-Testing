@@ -1,0 +1,503 @@
+ Bypass 2FA Using Logic Flaws and Replay
+Objectives
+By the end of this lab, students will be able to:
+
+Identify common logic flaws in two-factor authentication implementations
+Exploit session management vulnerabilities to bypass 2FA
+Perform session replay attacks using captured tokens
+Develop Python scripts to automate 2FA security testing
+Document security weaknesses and recommend remediation strategies
+Prerequisites
+Basic understanding of HTTP requests, responses, and cookies
+Familiarity with Python programming (requests library)
+Knowledge of web authentication mechanisms
+Experience with command-line tools in Linux
+Understanding of session management concepts
+Lab Environment Setup
+Ready-to-Use Cloud Machines: Al Nafi provides Linux-based cloud machines with all necessary tools pre-installed. Simply click Start Lab to begin.
+
+The environment includes:
+
+Ubuntu 20.04 LTS with Python 3.8+
+Vulnerable web application for testing
+Pre-installed Python libraries (requests, beautifulsoup4)
+Network analysis tools
+Task 1: Identify Logic Flaws in 2FA Implementation
+Step 1: Start the Vulnerable Application
+# Navigate to application directory
+cd /opt/vulnerable-2fa-app
+
+# Start the application
+python3 app.py &
+
+# Verify it's running
+curl -I http://localhost:8080
+Step 2: Analyze the Authentication Flow
+Create a script to map the 2FA authentication process:
+
+#!/usr/bin/env python3
+import requests
+from bs4 import BeautifulSoup
+
+class TwoFAAnalyzer:
+    def __init__(self, base_url):
+        self.base_url = base_url
+        self.session = requests.Session()
+    
+    def analyze_login_flow(self):
+        """
+        Analyze the complete 2FA login flow.
+        
+        TODO: Implement the following:
+        1. GET request to /login page
+        2. Extract CSRF token if present
+        3. POST credentials to /login
+        4. Check if redirected to 2FA page
+        5. Print all cookies and headers at each step
+        """
+        pass
+    
+    def test_direct_access(self):
+        """
+        Test if protected pages can be accessed without 2FA.
+        
+        TODO: Implement the following:
+        1. Login with valid credentials
+        2. Before entering 2FA code, try accessing /dashboard
+        3. Try accessing /profile and /admin
+        4. Document which resources are accessible
+        """
+        pass
+    
+    def check_session_changes(self):
+        """
+        Check if session ID changes after login.
+        
+        TODO: Implement the following:
+        1. Capture session ID before login
+        2. Capture session ID after login
+        3. Capture session ID after 2FA
+        4. Compare all three session IDs
+        """
+        pass
+
+# TODO: Initialize analyzer and run tests
+# analyzer = TwoFAAnalyzer("http://localhost:8080")
+Step 3: Test Common Logic Flaws
+Create a script to test for common vulnerabilities:
+
+#!/usr/bin/env python3
+import requests
+
+class LogicFlawTester:
+    def __init__(self, base_url):
+        self.base_url = base_url
+        self.vulnerabilities = []
+    
+    def test_skip_2fa(self):
+        """
+        Test if 2FA step can be skipped entirely.
+        
+        TODO: Implement the following:
+        1. Login with valid credentials
+        2. Capture the session cookie
+        3. Skip the 2FA page and go directly to /dashboard
+        4. Check if access is granted
+        5. Log results
+        """
+        pass
+    
+    def test_parameter_manipulation(self):
+        """
+        Test parameter manipulation to bypass 2FA.
+        
+        TODO: Test these parameters:
+        1. ?2fa_verified=true
+        2. ?skip_verification=1
+        3. ?admin=true
+        4. POST data: {'verified': 'yes'}
+        5. Document which parameters work
+        """
+        pass
+    
+    def test_rate_limiting(self):
+        """
+        Test if 2FA codes can be brute-forced.
+        
+        TODO: Implement the following:
+        1. Login with valid credentials
+        2. Try 20 different 2FA codes rapidly
+        3. Check if rate limiting is enforced
+        4. Document after how many attempts blocking occurs
+        """
+        pass
+
+# TODO: Run all tests and generate report
+Step 4: Document Findings
+Create a findings report:
+
+# Create report file
+cat > ~/2fa_findings.txt << 'EOF'
+2FA Security Assessment Report
+==============================
+
+Test Date: [DATE]
+Target: http://localhost:8080
+
+Vulnerabilities Found:
+1. [Describe vulnerability]
+2. [Describe vulnerability]
+
+Bypass Methods:
+1. [Describe method]
+2. [Describe method]
+
+Risk Level: [High/Medium/Low]
+EOF
+Task 2: Capture and Replay Session Tokens
+Step 1: Capture Session Tokens
+Create a token capture script:
+
+#!/usr/bin/env python3
+import requests
+import json
+from datetime import datetime
+
+class TokenCapture:
+    def __init__(self, base_url):
+        self.base_url = base_url
+        self.captured_tokens = []
+    
+    def capture_authentication_flow(self, username, password):
+        """
+        Capture all tokens during authentication.
+        
+        TODO: Implement the following:
+        1. Create new session
+        2. Visit login page - capture cookies
+        3. POST login credentials - capture cookies
+        4. Visit 2FA page - capture cookies
+        5. Submit invalid 2FA - capture cookies
+        6. Store all captured data with timestamps
+        """
+        pass
+    
+    def save_tokens(self, filename):
+        """
+        Save captured tokens to JSON file.
+        
+        TODO: Implement the following:
+        1. Convert captured_tokens to JSON
+        2. Save to specified filename
+        3. Include metadata (timestamp, stage, cookies)
+        """
+        pass
+    
+    def analyze_token_entropy(self):
+        """
+        Analyze session token strength.
+        
+        TODO: Implement the following:
+        1. Check session ID length
+        2. Check for predictable patterns
+        3. Calculate entropy
+        4. Report weak tokens
+        """
+        pass
+
+# TODO: Run capture process
+# capturer = TokenCapture("http://localhost:8080")
+# capturer.capture_authentication_flow("testuser", "password123")
+Step 2: Implement Session Replay Attack
+Create a replay attack script:
+
+#!/usr/bin/env python3
+import requests
+import json
+
+class SessionReplay:
+    def __init__(self, base_url, token_file):
+        self.base_url = base_url
+        self.token_file = token_file
+        self.tokens = self.load_tokens()
+    
+    def load_tokens(self):
+        """
+        Load previously captured tokens.
+        
+        TODO: Implement the following:
+        1. Read JSON file
+        2. Parse token data
+        3. Return token dictionary
+        """
+        pass
+    
+    def replay_from_stage(self, stage):
+        """
+        Replay session from specific authentication stage.
+        
+        TODO: Implement the following:
+        1. Find tokens from specified stage
+        2. Create new session
+        3. Set captured cookies
+        4. Try accessing protected resources
+        5. Return success/failure
+        """
+        pass
+    
+    def test_token_reuse(self):
+        """
+        Test if tokens can be reused after logout.
+        
+        TODO: Implement the following:
+        1. Complete full authentication
+        2. Capture final session token
+        3. Logout
+        4. Try using captured token
+        5. Document if access is still granted
+        """
+        pass
+    
+    def test_concurrent_sessions(self):
+        """
+        Test if same token works in multiple sessions.
+        
+        TODO: Implement the following:
+        1. Authenticate and capture token
+        2. Create 3 new sessions with same token
+        3. Try accessing resources from all sessions
+        4. Document how many succeed
+        """
+        pass
+
+# TODO: Run replay attacks
+# replayer = SessionReplay("http://localhost:8080", "tokens.json")
+Step 3: Test Token Persistence
+Create a persistence testing script:
+
+#!/usr/bin/env python3
+import requests
+import time
+
+class TokenPersistence:
+    def __init__(self, base_url):
+        self.base_url = base_url
+    
+    def test_token_lifetime(self):
+        """
+        Test how long tokens remain valid.
+        
+        TODO: Implement the following:
+        1. Authenticate and capture token
+        2. Test access immediately
+        3. Wait 5 minutes, test again
+        4. Wait 15 minutes, test again
+        5. Wait 30 minutes, test again
+        6. Document when token expires
+        """
+        pass
+    
+    def test_session_hijacking(self):
+        """
+        Simulate session hijacking scenario.
+        
+        TODO: Implement the following:
+        1. Create "victim" session
+        2. Extract victim's cookies
+        3. Create "attacker" session with stolen cookies
+        4. Test if attacker can access victim's resources
+        5. Test if both sessions work simultaneously
+        """
+        pass
+
+# TODO: Run persistence tests
+Task 3: Automate the Complete Bypass Process
+Step 1: Create Comprehensive Automation Framework
+Build an automated testing framework:
+
+#!/usr/bin/env python3
+import requests
+import json
+import argparse
+from datetime import datetime
+
+class TwoFABypassAutomation:
+    def __init__(self, base_url, username, password):
+        self.base_url = base_url
+        self.username = username
+        self.password = password
+        self.results = {
+            'vulnerabilities': [],
+            'bypass_methods': [],
+            'recommendations': []
+        }
+    
+    def run_all_tests(self):
+        """
+        Run comprehensive 2FA bypass testing suite.
+        
+        TODO: Implement the following test sequence:
+        1. Test logic flaws (direct access, parameter manipulation)
+        2. Test session management (fixation, replay)
+        3. Test rate limiting
+        4. Test token manipulation
+        5. Test race conditions
+        6. Generate comprehensive report
+        """
+        pass
+    
+    def test_logic_flaws(self):
+        """
+        Test all logic flaw vulnerabilities.
+        
+        TODO: Call all logic flaw test methods
+        """
+        pass
+    
+    def test_session_vulnerabilities(self):
+        """
+        Test all session-related vulnerabilities.
+        
+        TODO: Call all session test methods
+        """
+        pass
+    
+    def generate_report(self):
+        """
+        Generate detailed security assessment report.
+        
+        TODO: Implement the following:
+        1. Summarize all vulnerabilities found
+        2. List successful bypass methods
+        3. Calculate risk scores
+        4. Provide remediation recommendations
+        5. Save to HTML and JSON formats
+        """
+        pass
+
+# TODO: Implement command-line interface
+# if __name__ == "__main__":
+#     parser = argparse.ArgumentParser()
+#     parser.add_argument("--url", required=True)
+#     parser.add_argument("--username", required=True)
+#     parser.add_argument("--password", required=True)
+#     args = parser.parse_args()
+Step 2: Create Report Generator
+Build a professional report generator:
+
+#!/usr/bin/env python3
+import json
+from datetime import datetime
+
+class ReportGenerator:
+    def __init__(self, results):
+        self.results = results
+    
+    def generate_html_report(self):
+        """
+        Generate HTML security assessment report.
+        
+        TODO: Implement the following:
+        1. Create HTML template
+        2. Add executive summary
+        3. List all vulnerabilities with severity
+        4. Include proof-of-concept code
+        5. Add remediation recommendations
+        6. Save to file
+        """
+        pass
+    
+    def generate_json_report(self):
+        """
+        Generate machine-readable JSON report.
+        
+        TODO: Structure JSON with:
+        1. Metadata (date, target, tester)
+        2. Vulnerabilities array
+        3. Bypass methods array
+        4. Risk scores
+        5. Recommendations
+        """
+        pass
+    
+    def calculate_risk_score(self):
+        """
+        Calculate overall risk score.
+        
+        TODO: Implement scoring based on:
+        1. Number of vulnerabilities
+        2. Severity of each vulnerability
+        3. Ease of exploitation
+        4. Potential impact
+        """
+        pass
+
+# TODO: Generate reports from test results
+Step 3: Run Complete Assessment
+Execute the full automated assessment:
+
+# Run comprehensive 2FA bypass assessment
+python3 automated_bypass.py \
+    --url http://localhost:8080 \
+    --username testuser \
+    --password password123 \
+    --output-dir ~/2fa_assessment_results
+
+# View results
+cat ~/2fa_assessment_results/report.json
+firefox ~/2fa_assessment_results/report.html
+Expected Outcomes
+After completing this lab, you should have:
+
+Identified multiple 2FA implementation vulnerabilities
+Successfully captured and replayed session tokens
+Automated the vulnerability discovery process
+Generated professional security assessment reports
+Understanding of common 2FA bypass techniques
+Knowledge of proper 2FA implementation practices
+Key Vulnerabilities to Discover:
+
+Direct access to protected resources without 2FA
+Session token reuse after logout
+Lack of rate limiting on 2FA attempts
+Parameter manipulation bypasses
+Session fixation vulnerabilities
+Troubleshooting Tips
+Issue: Application won't start
+
+Check if port 8080 is already in use: netstat -tulpn | grep 8080
+Kill existing process: pkill -f app.py
+Restart application: python3 /opt/vulnerable-2fa-app/app.py &
+Issue: Session tokens not captured
+
+Verify requests library is installed: pip3 install requests
+Check if cookies are enabled in session object
+Print response headers to debug: print(response.headers)
+Issue: Replay attack not working
+
+Ensure you're using the correct token from the right stage
+Check if tokens have expired (test immediately after capture)
+Verify cookie names match exactly (case-sensitive)
+Issue: Scripts produce errors
+
+Check Python version: python3 --version (should be 3.6+)
+Install missing dependencies: pip3 install -r requirements.txt
+Review error messages for specific missing modules
+Conclusion
+This lab demonstrated critical vulnerabilities in two-factor authentication implementations. You learned to identify logic flaws, exploit session management weaknesses, and automate security testing. Key takeaways include:
+
+Logic flaws are often more dangerous than technical vulnerabilities
+Session management must be properly implemented at every authentication stage
+Automation is essential for comprehensive security testing
+Defense in depth requires multiple layers of validation
+Remediation Best Practices:
+
+Regenerate session IDs after each authentication stage
+Implement strict server-side validation for all authentication steps
+Enforce rate limiting on 2FA attempts
+Set appropriate token expiration times
+Invalidate old sessions when new ones are created
+Never trust client-side validation alone
+Ethical Considerations: Always obtain proper authorization before testing 2FA implementations. Use these techniques only in controlled environments or with explicit permission. Document all findings professionally and provide actionable remediation guidance.
+
+Continue practicing these techniques in authorized environments to strengthen your security assessment skills.
